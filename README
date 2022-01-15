@@ -1,0 +1,50 @@
+This is a very simple shell like interface for CLI activities.
+
+More will be added to this, but for now, this is the basic
+idea:
+
+#include <unistd.h>
+#include <ccli.h>
+
+static int say_hello(struct ccli *ccli, const char *command,
+			const char *line, int argc, char **argv, void *data)
+{
+	char *this = (char *)data;
+	int i;
+
+	/* command matches argv[0] */
+	/* line is the full line that was typed */
+	/* argc is the number of words in the line */
+	/* argv is the individual words */
+
+	printf("You typed %s\n", line);
+	printf("which is broken up into:\n");
+	for (i = 0; i < argc; i++)
+		printf("word %d:\t%s\n", i, argv[i]);
+
+	printf("And this is passed %s\n", this);
+
+	printf("Type 'exit' to quit\n");
+
+	/* returning anything but zero will exit the loop */
+	/* By default, ccli will add the "exit" command to exit the loop */
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	struct ccli *cli;
+	char *this_data = "something here";
+
+	cli = ccli_alloc("myprompt> ", STDIN_FILENO, STDOUT_FILENO);
+
+	ccli_register_command(ccli, "hello", say_hello, this_data);
+
+	ccli_loop(ccli);
+
+	ccli_free(ccli);
+
+	return 0;
+}
+
+More will come shortly.
