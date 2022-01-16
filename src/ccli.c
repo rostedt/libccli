@@ -198,6 +198,7 @@ static int line_parse(struct line_buf *line, char ***pargv)
 	char *arg;
 	char **v;
 	char *p = line->line;
+	char *u;
 	char *word;
 	char q = 0;
 	int argc = 0;
@@ -259,6 +260,29 @@ static int line_parse(struct line_buf *line, char ***pargv)
 		strncpy(arg, word, len);
 		arg[len] = '\0';
 
+		/* Now remove quotes and backslashes */
+		u = word = arg;
+		q = 0;
+		for (; *u; u++) {
+			switch (*u) {
+			case '\'':
+			case '"':
+				if (!q)
+					q = *u;
+				else if (*u == q)
+					q = 0;
+				break;
+			case '\\':
+				u++;
+				if (!*u)
+					u--;
+				/* fallthrough */
+			default:
+				*word++ = *u;
+				break;
+			}
+		}
+		*word = '\0';
 		argv[argc++] = arg;
 	}
 
