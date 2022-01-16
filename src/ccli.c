@@ -557,6 +557,7 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		m = strlen(command->cmd);
 		for (i = len; i < m; i++)
 			line_insert(line, command->cmd[i]);
+		line_insert(line, ' ');
 		refresh(ccli, line);
 		return;
 	}
