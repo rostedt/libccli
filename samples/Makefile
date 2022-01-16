@@ -14,7 +14,7 @@ all: $(TARGETS)
 $(sdir):
 	@mkdir -p $(sdir)
 
-$(TARGETS): $(sdir)
+$(TARGETS): $(sdir) $(LIBCCLI_STATIC)
 
 $(sdir)/%: $(bdir)/%.o
 	$(call do_sample_build,$@,$<)
