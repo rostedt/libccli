@@ -359,6 +359,18 @@ static int exec_exit(struct ccli *ccli, const char *command,
 	return 1;
 }
 
+/**
+ * ccli_alloc - Allocate a new ccli descriptor.
+ * @prompt: The prompt to display (NULL for none)
+ * @in: The input file descriptor.
+ * @out: The output file descriptor.
+ *
+ * Allocates the comand line interface descriptor, taking
+ * over control of the @in and @out file descriptors.
+ *
+ * Returns the allocated descriptor on success (must be freed with
+ *   ccli_free(), and NULL on error.
+ */
 struct ccli *ccli_alloc(const char *prompt, int in, int out)
 {
 	struct termios ttyin;
@@ -402,6 +414,12 @@ struct ccli *ccli_alloc(const char *prompt, int in, int out)
 	return NULL;
 }
 
+/**
+ * ccli_free - Free an allocated ccli descriptor.
+ * @ccli: The descriptor to free.
+ *
+ * Free the @ccli descriptor created with ccli_alloc().
+ */
 void ccli_free(struct ccli *ccli)
 {
 	int i;
@@ -418,6 +436,16 @@ void ccli_free(struct ccli *ccli)
 	free(ccli);
 }
 
+/**
+ * ccli_printf - Write to the output descriptor of ccli
+ * @ccli: The CLI descriptor to write to.
+ * @fmt: A printf() like format to write.
+ *
+ * Writes to the output descriptor of @ccli the content passed in.
+ *
+ * Returns the number of characters written on success, and
+ *   -1 on error.
+ */
 int ccli_printf(struct ccli *ccli, const char *fmt, ...)
 {
 	va_list ap1, ap2;
@@ -457,6 +485,19 @@ static struct command *find_command(struct ccli *ccli, const char *cmd)
 	return NULL;
 }
 
+/**
+ * ccli_register_command - Register a command for the CLI interface.
+ * @ccli: The CLI descriptor to register a command for.
+ * @command_name: the text that will execute the command.
+ * @callback: The callback function to call when the command is executed.
+ * @data: Data to pass to the @callback function.
+ *
+ * Register the command @command_name to @ccli. When the user types
+ * that command, it will trigger the @callback which will be passed
+ * the arguments that the user typed, along with the @data pointer.
+ *
+ * Returns 0 on success and -1 on error.
+ */
 int ccli_register_command(struct ccli *ccli, const char *command_name,
 			  ccli_command_callback callback, void *data)
 {
@@ -497,6 +538,17 @@ int ccli_register_command(struct ccli *ccli, const char *command_name,
 	return 0;
 }
 
+/**
+ * ccli_register_completion - Register a completion for command
+ * @ccli: The CLI descriptor to register a completion for.
+ * @command_name: The command that the completion is for.
+ * @completion: The completion function to call.
+ *
+ * Register a @completion function to be called when the user had
+ * typed a command and hits tab on one of its pramaters.
+ *
+ * Returns 0 on success and -1 on error.
+ */
 int ccli_register_completion(struct ccli *ccli, const char *command_name,
 			     ccli_completion completion)
 {
@@ -722,6 +774,16 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	refresh(ccli, line);
 }
 
+/**
+ * ccli_loop - Execute a command loop for the user.
+ * @ccli: The CLI descriptor to execute on.
+ *
+ * This reads the input descriptor of @ccli and lets the user
+ * execute shell like commands on the command line.
+ *
+ * Returns 0 on success (when one of the commands exits the loop)
+ *  or -1 on error.
+ */
 int ccli_loop(struct ccli *ccli)
 {
 	struct line_buf line;
