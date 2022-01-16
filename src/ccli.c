@@ -185,6 +185,9 @@ static int line_parse(struct line_buf *line, char ***pargv)
 		while (isspace(*p))
 			p++;
 
+		if (!*p)
+			break;
+
 		word = p;
 
 		for ( ; !last && *p; p++) {
