@@ -56,7 +56,7 @@ static void cleanup(void)
 {
 	tcsetattr(STDIN_FILENO, TCSANOW, &savein);
 	tcsetattr(STDOUT_FILENO, TCSANOW, &saveout);
-};
+}
 
 static void echo(struct ccli *ccli, char ch)
 {
