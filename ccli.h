@@ -16,6 +16,9 @@ typedef int (*ccli_command_callback)(struct ccli *ccli, const char *command,
 struct ccli *ccli_alloc(const char *prompt, int in, int out);
 void ccli_free(struct ccli *ccli);
 
+__attribute__((__format__(printf, 2, 3)))
+int ccli_printf(struct ccli *ccli, const char *fmt, ...);
+
 int ccli_loop(struct ccli *ccli);
 int ccli_register_command(struct ccli *ccli, const char *command_name,
 			  ccli_command_callback callback, void *data);

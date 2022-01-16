@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <termios.h>
 #include <unistd.h>
@@ -390,6 +391,33 @@ void ccli_free(struct ccli *ccli)
 
 	free(ccli->commands);
 	free(ccli);
+}
+
+int ccli_printf(struct ccli *ccli, const char *fmt, ...)
+{
+	va_list ap1, ap2;
+	char *buf = NULL;
+	int len;
+
+	va_start(ap1, fmt);
+	va_copy(ap2, ap1);
+	len = vsnprintf(NULL, 0, fmt, ap1);
+	va_end(ap1);
+
+	if (len > 0) {
+		buf = malloc(len + 1);
+		if (buf)
+			len = vsnprintf(buf, len + 1, fmt, ap2);
+		else
+			len = -1;
+	}
+	va_end(ap2);
+
+	if (len > 0)
+		echo_str(ccli, buf);
+	free(buf);
+
+	return len;
 }
 
 int ccli_register_command(struct ccli *ccli, const char *command_name,
