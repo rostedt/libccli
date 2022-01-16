@@ -423,25 +423,35 @@ int ccli_printf(struct ccli *ccli, const char *fmt, ...)
 	return len;
 }
 
+static struct command *find_command(struct ccli *ccli, const char *cmd)
+{
+	int i;
+
+	for (i = 0; i < ccli->nr_commands; i++) {
+		if (strcmp(cmd, ccli->commands[i].cmd) == 0)
+			return &ccli->commands[i];
+	}
+
+	return NULL;
+}
+
 int ccli_register_command(struct ccli *ccli, const char *command_name,
 			  ccli_command_callback callback, void *data)
 {
 	struct command *commands;
 	char *cmd;
-	int i;
 
 	if (!ccli || !command_name || !callback) {
 		errno = -EINVAL;
 		return -1;
 	}
 
-	for (i = 0; i < ccli->nr_commands; i++) {
-		if (strcmp(command_name, ccli->commands[i].cmd) == 0) {
-			/* override it with this one */
-			ccli->commands[i].callback = callback;
-			ccli->commands[i].data = data;
-			return 0;
-		}
+	commands = find_command(ccli, command_name);
+	if (commands) {
+		/* override it with this one */
+		commands->callback = callback;
+		commands->data = data;
+		return 0;
 	}
 
 	cmd = strdup(command_name);
@@ -467,6 +477,7 @@ int ccli_register_command(struct ccli *ccli, const char *command_name,
 
 static int execute(struct ccli *ccli, struct line_buf *line)
 {
+	struct command *cmd;
 	char **argv;
 	int argc;
 	int ret = 0;
@@ -481,16 +492,13 @@ static int execute(struct ccli *ccli, struct line_buf *line)
 	if (!argc)
 		return 0;
 
-	for (i = 0; i < ccli->nr_commands; i++) {
-		if (strcmp(argv[0], ccli->commands[i].cmd) == 0) {
-			ret = ccli->commands[i].callback(ccli, ccli->commands[i].cmd,
-							 line->line, ccli->commands[i].data,
-							 argc, argv);
-			break;
-		}
-	}
+	cmd = find_command(ccli, argv[0]);
 
-	if (i == ccli->nr_commands) {
+	if (cmd) {
+		ret = cmd->callback(ccli, cmd->cmd,
+				    line->line, cmd->data,
+				    argc, argv);
+	} else {
 		echo_str(ccli, "Command not found: ");
 		echo_str(ccli, argv[0]);
 		echo(ccli, '\n');
