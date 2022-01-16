@@ -621,6 +621,9 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	if (cnt) {
 		for (i = 0; i < cnt; i++) {
+			/* If list[i] failed to allocate, we need to handle that */
+			if (!list[i])
+				continue;
 			if (!mlen || strncmp(list[i], match, mlen) == 0) {
 				matched++;
 				m = i;
@@ -635,6 +638,9 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 			echo(ccli, '\n');
 
 			for (i = 0; i < cnt; i++) {
+				/* If list[i] failed to allocate, we need to handle that */
+				if (!list[i])
+					continue;
 				if (!mlen || strncmp(list[i], match, mlen) == 0) {
 					if (i)
 						echo(ccli, ' ');
