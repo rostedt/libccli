@@ -229,12 +229,12 @@ static int line_parse(struct line_buf *line, char ***pargv)
 				if (!*p)
 					p--;
 				break;
-				
+
 			default:
 				if (q)
 					break;
 				if (isspace(*p))
-					last = true; 
+					last = true;
 				break;
 			}
 		}
