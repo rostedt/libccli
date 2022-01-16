@@ -113,17 +113,41 @@ __hidden int line_copy(struct line_buf *dst, struct line_buf *src, int len)
 	return 0;
 }
 
-__hidden int line_parse(struct line_buf *line, char ***pargv)
+/**
+ * ccli_line_parse - parse a string into its arguments
+ * @line: The string to parse
+ * @pargv: A pointer to place the array of strings
+ *
+ * Parse the @line into the arguments as the ccli would behave
+ * when the user enters on the command line. @pargv is a pointer
+ * to a string array that will be allocated and the arguments
+ *  will be placed on it.
+ *
+ * Returns the number of arguments that were parsed out of
+ *    line or -1 on error. For all return values greater than zero
+ *    @pargv should be freed with ccli_argv_free(), but it does
+ *    not need to be called on the return of zero or less.
+ */
+int ccli_line_parse(const char *line, char ***pargv)
 {
 	char **argv = NULL;
 	char *arg;
 	char **v;
-	char *p = line->line;
+	const char *p = line;
+	const char *word;
+	char *w;
 	char *u;
-	char *word;
 	char q = 0;
 	int argc = 0;
 	int len;
+
+	if (!pargv) {
+		errno = -EINVAL;
+		return -1;
+	}
+
+	/* In case ccli_argv_free() gets called on a return of zero */
+	*pargv = NULL;
 
 	while (*p) {
 		bool last = false;
@@ -171,7 +195,8 @@ __hidden int line_parse(struct line_buf *line, char ***pargv)
 		if (!arg)
 			goto fail;
 
-		v = realloc(argv, sizeof(*v) * (argc + 1));
+		/* Add two, one for a NULL value at the end */
+		v = realloc(argv, sizeof(*v) * (argc + 2));
 		if (!v) {
 			free(arg);
 			goto fail;
@@ -182,7 +207,7 @@ __hidden int line_parse(struct line_buf *line, char ***pargv)
 		arg[len] = '\0';
 
 		/* Now remove quotes and backslashes */
-		u = word = arg;
+		u = w = arg;
 		q = 0;
 		for (; *u; u++) {
 			switch (*u) {
@@ -199,12 +224,13 @@ __hidden int line_parse(struct line_buf *line, char ***pargv)
 					u--;
 				/* fallthrough */
 			default:
-				*word++ = *u;
+				*w++ = *u;
 				break;
 			}
 		}
-		*word = '\0';
+		*w = '\0';
 		argv[argc++] = arg;
+		argv[argc] = NULL;
 	}
 
 	*pargv = argv;
@@ -214,6 +240,29 @@ __hidden int line_parse(struct line_buf *line, char ***pargv)
  fail:
 	free_argv(argc, argv);
 	return -1;
+}
+
+/**
+ * ccli_free_argv - free a list of strings
+ * @argv: The list of strings returned by ccli_line_parse()
+ *
+ * Free the list of strings that was allocatde by ccli_line_parse.
+ */
+void ccli_argv_free(char **argv)
+{
+	int i;
+
+	if (!argv)
+		return;
+
+	for (i = 0; argv[i]; i++)
+		free(argv[i]);
+	free(argv);
+}
+
+__hidden int line_parse(struct line_buf *line, char ***pargv)
+{
+	return ccli_line_parse(line->line, pargv);
 }
 
 __hidden void line_replace(struct line_buf *line, char *str)

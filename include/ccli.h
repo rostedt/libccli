@@ -29,4 +29,8 @@ int ccli_register_command(struct ccli *ccli, const char *command_name,
 
 int ccli_register_completion(struct ccli *ccli, const char *command_name,
 			     ccli_completion completion);
+
+int ccli_parse_line(const char *line, char ***argv);
+void ccli_argv_free(char **argv);
+
 #endif
