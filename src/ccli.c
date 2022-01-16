@@ -48,7 +48,7 @@ static void cleanup(struct ccli *ccli)
 {
 	tcsetattr(ccli->in, TCSANOW, &ccli->savein);
 	tcsetattr(ccli->out, TCSANOW, &ccli->saveout);
-};
+}
 
 static void echo(struct ccli *ccli, char ch)
 {
