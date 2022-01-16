@@ -398,9 +398,10 @@ static int goto_file(struct ccli *ccli, const char *command,
 		offset += rf->pos;
 		break;
 	case GOTO_BACKWARD:
-		offset = rf->pos - offset;
-		if (offset < 0)
+		if (offset > rf->pos)
 			offset = 0;
+		else
+			offset = rf->pos - offset;
 		break;
 	}
 
