@@ -64,7 +64,7 @@ This will give you a command line interface that can read the binary file:
 
 
 -----------------------------------------------------------------------------
- $ bin/read-binary trace.dat
+ $ bin/read-file trace.dat
 Reading file /tmp/trace.dat
 rfile> read 8
 0000000000000000: 0x6963617274440817
