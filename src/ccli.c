@@ -502,10 +502,6 @@ static int execute(struct ccli *ccli, struct line_buf *line)
 	return ret;
 }
 
-static void do_completion(struct ccli *ccli, struct line_buf *line)
-{
-}
-
 static void refresh(struct ccli *ccli, struct line_buf *line)
 {
 	int len;
@@ -518,6 +514,69 @@ static void refresh(struct ccli *ccli, struct line_buf *line)
 
 	for (len = line->len; len > line->pos; len--)
 		echo(ccli, '\b');
+}
+
+static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
+{
+	struct command *command;
+	int len;
+	int i = line->pos - 1;
+	int s, m = 0;
+	int match = -1;
+
+	/* Completion currently only works with the first word */
+	while (i >= 0 && !isspace(line->line[i]))
+		i--;
+
+	s = i + 1;
+
+	while (i >= 0 && isspace(line->line[i]))
+		i--;
+
+	/* If the pos was at the first word, i will be less than zero */
+	if (i >= 0)
+		return;
+
+	len = line->pos - s;
+
+	/* Find how many commands match */
+	for (i = 0; i < ccli->nr_commands; i++) {
+		command = &ccli->commands[i];
+		if (!len || strncmp(line->line + s, command->cmd, len) == 0) {
+			match = i;
+			m++;
+		}
+	}
+
+	if (!m)
+		return;
+
+	if (m == 1) {
+		/* select it */
+		command = &ccli->commands[match];
+		m = strlen(command->cmd);
+		for (i = len; i < m; i++)
+			line_insert(line, command->cmd[i]);
+		refresh(ccli, line);
+		return;
+	}
+
+	/* list all the matches if tab was hit more than once */
+	if (!tab)
+		return;
+
+	echo(ccli, '\n');
+
+	for (i = 0; i < ccli->nr_commands; i++) {
+		command = &ccli->commands[i];
+		if (!len || strncmp(line->line + s, command->cmd, len) == 0) {
+			if (i)
+				echo(ccli, ' ');
+			echo_str(ccli, command->cmd);
+		}
+	}
+	echo(ccli, '\n');
+	echo_prompt(ccli);
 }
 
 int ccli_loop(struct ccli *ccli)
@@ -553,8 +612,7 @@ int ccli_loop(struct ccli *ccli)
 			echo_prompt(ccli);
 			break;
 		case '\t':
-			if (tab++)
-				do_completion(ccli, &line);
+			do_completion(ccli, &line, tab++);
 			break;
 		case 3: /* ETX */
 			echo_str(ccli, "^C\n");
