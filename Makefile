@@ -163,6 +163,15 @@ libccli.so: $(bdir) $(LIBCCLI_SHARED)
 
 libs: libccli.a libccli.so
 
+UTEST_DIR = utest
+UTEST_BINARY = ccli-utest
+
+test: force $(LIBCCLI_STATIC)
+ifneq ($(CUNIT_INSTALLED),1)
+	$(error CUnit framework not installed, cannot build unit tests))
+endif
+	$(Q)$(call descend,$(src)/$(UTEST_DIR),$@)
+
 define find_tag_files
 	find $(src) -name '\.pc' -prune -o -name '*\.[ch]' -print -o -name '*\.[ch]pp' \
 		! -name '\.#' -print
