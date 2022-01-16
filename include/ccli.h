@@ -4,7 +4,7 @@
 /*
  * CLI interface for C.
  *
- * Copyright: Steven Rostedt <rostedt@goodmis.org>
+ * Copyright (C) 2022 Steven Rostedt <rostedt@goodmis.org>
  */
 
 struct ccli;

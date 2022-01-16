@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-2.1
 /*
  * read a binary file via a command line.
- * Copyright: Steven Rostedt <rostedt@goodmis.org>
+ * Copyright (C) 2022 Steven Rostedt <rostedt@goodmis.org>
  */
 #include <stdio.h>
 #include <stdlib.h>
