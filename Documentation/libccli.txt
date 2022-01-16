@@ -1,0 +1,121 @@
+libccli(3)
+==========
+
+NAME
+----
+libccli - A simple CLI interface helper library for C.
+
+SYNOPSIS
+--------
+[verse]
+--
+*#include <ccli.h>*
+
+struct ccli pass:[*]*ccli_alloc*(const char pass:[*]_prompt_, int _in_, int _out_);
+void *ccli_free*(struct ccli pass:[*]_ccli_);
+
+int *ccli_register_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
+			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
+						   void pass:[*], int, char pass:[**]),
+			  void pass:[*]_data_);
+int *ccli_register_completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
+			  int (pass:[*]_completion_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
+						   int, const char pass:[*], char pass:[***], void pass:[*]));
+
+int *ccli_loop*(struct ccli pass:[*]_ccli_);
+
+
+int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
+
+--
+
+DESCRIPTION
+-----------
+The libtracefs(3) library provides APIs to access kernel trace file system.
+
+The idea is simple. Allocate the _ccli_ object, register commands you would like to have
+in your shell, and the execute *ccli_loop*(). The basic flow is:
+
+[source,c]
+--
+#include <stdio.h>
+#include <unistd.h>
+#include <ccli.h>
+
+static int say_hello(struct ccli *ccli, const char *command,
+			const char *line, int argc, char **argv, void *data)
+{
+	char *this = (char *)data;
+	int i;
+
+	/* command matches argv[0] */
+	/* line is the full line that was typed */
+	/* argc is the number of words in the line */
+	/* argv is the individual words */
+
+	printf("You typed %s\n", line);
+	printf("which is broken up into:\n");
+	for (i = 0; i < argc; i++)
+		printf("word %d:\t%s\n", i, argv[i]);
+
+	printf("And this is passed %s\n", this);
+
+	printf("Type 'exit' to quit\n");
+
+	/* returning anything but zero will exit the loop */
+	/* By default, ccli will add the "exit" command to exit the loop */
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	struct ccli *cli;
+	char *this_data = "something here";
+
+	cli = ccli_alloc("myprompt> ", STDIN_FILENO, STDOUT_FILENO);
+
+	ccli_register_command(ccli, "hello", say_hello, this_data);
+
+	ccli_loop(ccli);
+
+	ccli_free(ccli);
+
+	return 0;
+}
+--
+
+FILES
+-----
+[verse]
+--
+*ccli.h*
+	Header file to include in order to have access to the library APIs.
+*-lccli*
+	Linker switch to add when building a program that uses the library.
+--
+
+SEE ALSO
+--------
+
+AUTHOR
+------
+[verse]
+--
+*Steven Rostedt* <rostedt@goodmis.org>
+--
+REPORTING BUGS
+--------------
+Report bugs to  <rostedt@goodmis.org>
+
+LICENSE
+-------
+libccli is Free Software licensed under the GNU LGPL 2.1
+
+RESOURCES
+---------
+https://git.kernel.org/pub/scm/libs/libtrace/libtracefs.git/
+
+COPYING
+-------
+Copyright \(C) 2022 Steven Rostedt. Free use of this software is granted under
+the terms of the GNU Public License (GPL).
