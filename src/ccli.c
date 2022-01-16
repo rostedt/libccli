@@ -206,7 +206,7 @@ static int line_parse(struct line_buf *line, char ***pargv)
 	while (*p) {
 		bool last = false;
 
-		while (isspace(*p))
+		while (isspace((unsigned char)*p))
 			p++;
 
 		if (!*p)
@@ -233,7 +233,7 @@ static int line_parse(struct line_buf *line, char ***pargv)
 			default:
 				if (q)
 					break;
-				if (isspace(*p))
+				if (isspace((unsigned char)*p))
 					last = true;
 				break;
 			}
@@ -605,7 +605,7 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	word = argc - 1;
 
 	/* If the cursor is on a space, there's no word to match */
-	if (isspace(copy.line[copy.pos - 1])) {
+	if (isspace((unsigned char)copy.line[copy.pos - 1])) {
 		match = "";
 		word++;
 	} else {
@@ -664,12 +664,12 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	int match = -1;
 
 	/* Completion currently only works with the first word */
-	while (i >= 0 && !isspace(line->line[i]))
+	while (i >= 0 && !isspace((unsigned char)line->line[i]))
 		i--;
 
 	s = i + 1;
 
-	while (i >= 0 && isspace(line->line[i]))
+	while (i >= 0 && isspace((unsigned char)line->line[i]))
 		i--;
 
 	/* If the pos was at the first word, i will be less than zero */
