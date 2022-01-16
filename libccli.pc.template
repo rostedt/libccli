@@ -1,0 +1,10 @@
+prefix=INSTALL_PREFIX
+libdir=${prefix}/LIB_DIR
+includedir=${prefix}/HEADER_DIR
+
+Name: libccli
+URL: https://github.com/rostedt/libccli
+Description: Simple library for shell like CLI interface
+Version: LIB_VERSION
+Cflags: -I${includedir}
+Libs: -L${libdir} -lccli
