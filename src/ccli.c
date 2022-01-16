@@ -138,7 +138,7 @@ static int exec_exit(struct ccli *ccli, const char *command,
 		     const char *line, void *data,
 		     int argc, char **argv)
 {
-	printf("Exiting\n");
+	ccli_printf(ccli, "Exiting\n");
 	return 1;
 }
 
