@@ -1,5 +1,9 @@
 *.o
 *~
+bin/
+build_prefix
+ccli_version.h
 lib
 *.d
 *.so
+libccli.pc
