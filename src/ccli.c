@@ -441,7 +441,7 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	word = argc - 1;
 
 	/* If the cursor is on a space, there's no word to match */
-	if (isspace(copy.line[copy.pos - 1])) {
+	if (ISSPACE(copy.line[copy.pos - 1])) {
 		match = "";
 		word++;
 	} else {
@@ -506,12 +506,12 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	int match = -1;
 
 	/* Completion currently only works with the first word */
-	while (i >= 0 && !isspace(line->line[i]))
+	while (i >= 0 && !ISSPACE(line->line[i]))
 		i--;
 
 	s = i + 1;
 
-	while (i >= 0 && isspace(line->line[i]))
+	while (i >= 0 && ISSPACE(line->line[i]))
 		i--;
 
 	/* If the pos was at the first word, i will be less than zero */

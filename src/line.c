@@ -152,7 +152,7 @@ int ccli_line_parse(const char *line, char ***pargv)
 	while (*p) {
 		bool last = false;
 
-		while (isspace(*p))
+		while (ISSPACE(*p))
 			p++;
 
 		if (!*p)
@@ -179,7 +179,7 @@ int ccli_line_parse(const char *line, char ***pargv)
 			default:
 				if (q)
 					break;
-				if (isspace(*p))
+				if (ISSPACE(*p))
 					last = true;
 				break;
 			}

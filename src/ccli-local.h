@@ -13,6 +13,8 @@
 
 #define __hidden __attribute__((visibility ("hidden")))
 
+#define ISSPACE(c) isspace((unsigned char)(c))
+
 struct line_buf {
 	char *line;
 	int size;
