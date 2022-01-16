@@ -36,6 +36,7 @@ static struct termios saveout;
 struct command {
 	char			*cmd;
 	ccli_command_callback	callback;
+	ccli_completion		completion;
 	void			*data;
 };
 
@@ -168,6 +169,29 @@ static void line_del(struct line_buf *line)
 	line->line[line->len] = '\0';
 }
 
+static int line_copy(struct line_buf *dst, struct line_buf *src, int len)
+{
+	dst->size = src->size;
+	dst->line = calloc(1, src->size);
+	if (!dst->line)
+		return -1;
+
+	if (len > src->len)
+		len = src->len;
+	strncpy(dst->line, src->line, len);
+	dst->pos = len;
+	dst->len = len;
+
+	return 0;
+}
+
+static void free_argv(int argc, char **argv)
+{
+	for (argc--; argc >= 0; argc--)
+		free(argv[argc]);
+	free(argv);
+}
+
 static int line_parse(struct line_buf *line, char ***pargv)
 {
 	char **argv = NULL;
@@ -243,9 +267,7 @@ static int line_parse(struct line_buf *line, char ***pargv)
 	return argc;
 
  fail:
-	for (argc--; argc >= 0; argc--)
-		free(argv[argc]);
-	free(argv);
+	free_argv(argc, argv);
 	return -1;
 }
 
@@ -475,13 +497,32 @@ int ccli_register_command(struct ccli *ccli, const char *command_name,
 	return 0;
 }
 
+int ccli_register_completion(struct ccli *ccli, const char *command_name,
+			     ccli_completion completion)
+{
+	struct command *cmd;
+
+	if (!ccli || !command_name || !completion) {
+		errno = -EINVAL;
+		return -1;
+	}
+
+	cmd = find_command(ccli, command_name);
+	if (!cmd) {
+		errno = -ENODEV;
+		return -1;
+	}
+
+	cmd->completion = completion;
+	return 0;
+}
+
 static int execute(struct ccli *ccli, struct line_buf *line)
 {
 	struct command *cmd;
 	char **argv;
 	int argc;
 	int ret = 0;
-	int i;
 
 	argc = line_parse(line, &argv);
 	if (argc < 0) {
@@ -504,9 +545,7 @@ static int execute(struct ccli *ccli, struct line_buf *line)
 		echo(ccli, '\n');
 	}
 
-	for (i = 0; i < argc; i++)
-		free(argv[i]);
-	free(argv);
+	free_argv(argc, argv);
 
 	history_add(ccli, line->line);
 
@@ -525,6 +564,95 @@ static void refresh(struct ccli *ccli, struct line_buf *line)
 
 	for (len = line->len; len > line->pos; len--)
 		echo(ccli, '\b');
+}
+
+static void insert_word(struct ccli *ccli, struct line_buf *line,
+			const char *word, int len)
+{
+	int i;
+
+	for (i = 0; i < len; i++)
+		line_insert(line, word[i]);
+	line_insert(line, ' ');
+	refresh(ccli, line);
+}
+
+static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
+{
+	struct command *cmd;
+	struct line_buf copy;
+	char **list = NULL;
+	char **argv;
+	char *match;
+	int matched = 0;
+	int word;
+	int argc;
+	int mlen;
+	int len;
+	int cnt = 0;
+	int ret;
+	int m;
+	int i;
+
+	ret = line_copy(&copy, line, line->pos);
+	if (ret < 0)
+		return;
+
+	argc = line_parse(&copy, &argv);
+	if (argc <= 0)
+		goto out;
+
+	word = argc - 1;
+
+	/* If the cursor is on a space, there's no word to match */
+	if (isspace(copy.line[copy.pos - 1])) {
+		match = "";
+		word++;
+	} else {
+		match = argv[word];
+	}
+
+	cmd = find_command(ccli, argv[0]);
+	if (cmd && cmd->completion)
+		cnt = cmd->completion(ccli, cmd->cmd, copy.line, word,
+				      match, &list, cmd->data);
+
+	mlen = strlen(match);
+
+	if (cnt) {
+		for (i = 0; i < cnt; i++) {
+			if (!mlen || strncmp(list[i], match, mlen) == 0) {
+				matched++;
+				m = i;
+			}
+		}
+
+		if (matched == 1) {
+			len = strlen(list[m]);
+			insert_word(ccli, line, list[m] + mlen, len - mlen);
+
+		} else if (tab && matched > 1) {
+			echo(ccli, '\n');
+
+			for (i = 0; i < cnt; i++) {
+				if (!mlen || strncmp(list[i], match, mlen) == 0) {
+					if (i)
+						echo(ccli, ' ');
+					echo_str(ccli, list[i]);
+				}
+			}
+			echo(ccli, '\n');
+			refresh(ccli, line);
+		}
+
+		for (i = 0; i < cnt; i++)
+			free(list[i]);
+		free(list);
+	}
+
+	free_argv(argc, argv);
+ out:
+	line_cleanup(&copy);
 }
 
 static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
@@ -546,7 +674,7 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	/* If the pos was at the first word, i will be less than zero */
 	if (i >= 0)
-		return;
+		return word_completion(ccli, line, tab);
 
 	len = line->pos - s;
 
@@ -566,10 +694,7 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		/* select it */
 		command = &ccli->commands[match];
 		m = strlen(command->cmd);
-		for (i = len; i < m; i++)
-			line_insert(line, command->cmd[i]);
-		line_insert(line, ' ');
-		refresh(ccli, line);
+		insert_word(ccli, line, command->cmd + len, m - len);
 		return;
 	}
 
@@ -588,7 +713,7 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		}
 	}
 	echo(ccli, '\n');
-	echo_prompt(ccli);
+	refresh(ccli, line);
 }
 
 int ccli_loop(struct ccli *ccli)

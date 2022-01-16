@@ -13,6 +13,10 @@ typedef int (*ccli_command_callback)(struct ccli *ccli, const char *command,
 				     const char *line, void *data,
 				     int argc, char **argv);
 
+typedef int (*ccli_completion)(struct ccli *ccli, const char *command,
+			       const char *line, int word, const char *match,
+			       char ***list, void *data);
+
 struct ccli *ccli_alloc(const char *prompt, int in, int out);
 void ccli_free(struct ccli *ccli);
 
@@ -23,4 +27,6 @@ int ccli_loop(struct ccli *ccli);
 int ccli_register_command(struct ccli *ccli, const char *command_name,
 			  ccli_command_callback callback, void *data);
 
+int ccli_register_completion(struct ccli *ccli, const char *command_name,
+			     ccli_completion completion);
 #endif

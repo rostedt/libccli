@@ -16,6 +16,8 @@
 #include <sys/stat.h>
 #include "ccli.h"
 
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+
 static char *argv0;
 
 static char *get_this_name(void)
@@ -318,6 +320,43 @@ enum {
 	GOTO_BACKWARD,
 };
 
+static int read_completion(struct ccli *ccli, const char *command,
+			   const char *line, int word, const char *match,
+			   char ***list, void *data)
+{
+	char *cmds[] = { "1", "2", "4", "8",
+		"x8", "x16", "x32", "x64",
+		"s8", "s16", "s32", "s64",
+		"u8", "u16", "u32", "u64",
+		"string" };
+	char **l;
+	int cnt;
+	int i;
+
+	if (word != 1)
+		return 0;
+
+	cnt = ARRAY_SIZE(cmds);
+
+	l = calloc(cnt, sizeof(char *));
+	if (!l)
+		return -1;
+
+	for (i = 0; i < cnt; i++) {
+		l[i] = strdup(cmds[i]);
+		if (!l[i])
+			goto out_free;
+	}
+
+	*list = l;
+	return cnt;
+ out_free:
+	for (; i >= 0; i--)
+		free(l[i]);
+	free(l);
+	return -1;
+}
+
 static int goto_file(struct ccli *ccli, const char *command,
 		     const char *line, void *data,
 		     int argc, char **argv)
@@ -490,6 +529,8 @@ int main (int argc, char **argv)
 	ccli_register_command(cli, "dump", dump_file, &rf);
 	ccli_register_command(cli, "help", do_help, &rf);
 	ccli_register_command(cli, "quit", do_quit, &rf);
+
+	ccli_register_completion(cli, "read", read_completion);
 
 	ccli_loop(cli);
 	ccli_free(cli);
