@@ -37,6 +37,17 @@ Here's some helpful hints for your git commits.
    I maintain several repositories, and when I'm looking at commit of one of
    them, I like to know which one it is for.
 
+   Also start the rest of the line with a capital letter like a sentence, but
+   do not include a period.
+
+      ccli: Fix reading the prompt backwards
+
+   instead of:
+
+      ccli: fix reading the prompt backwards
+
+   It just makes it nicer to read.
+
    The subject should say "what" is being done, whereas the body should be
    the "why".
 
