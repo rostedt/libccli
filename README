@@ -3,11 +3,15 @@ This is a very simple shell like interface for CLI activities.
 More will be added to this, but for now, this is the basic
 idea:
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <ccli.h>
 
 static int say_hello(struct ccli *ccli, const char *command,
-			const char *line, int argc, char **argv, void *data)
+		     const char *line, void *data,
+		     int argc, char **argv)
 {
 	char *this = (char *)data;
 	int i;
@@ -17,28 +21,97 @@ static int say_hello(struct ccli *ccli, const char *command,
 	/* argc is the number of words in the line */
 	/* argv is the individual words */
 
-	printf("You typed %s\n", line);
-	printf("which is broken up into:\n");
+	ccli_printf(ccli, "You typed %s\n", line);
+	ccli_printf(ccli, "which is broken up into:\n");
 	for (i = 0; i < argc; i++)
-		printf("word %d:\t%s\n", i, argv[i]);
+		ccli_printf(ccli, "word %d:\t%s\n", i, argv[i]);
 
-	printf("And this is passed %s\n", this);
+	ccli_printf(ccli, "And this is passed %s\n", this);
 
-	printf("Type 'exit' to quit\n");
+	ccli_printf(ccli, "Type 'exit' to quit\n");
 
 	/* returning anything but zero will exit the loop */
 	/* By default, ccli will add the "exit" command to exit the loop */
 	return 0;
 }
 
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+
+static int hello_completion(struct ccli *ccli, const char *command,
+			    const char *line, int word, const char *match,
+			    char ***list, void *data)
+{
+	const char *word1[] = {
+		"Sir", "Madam", "you", "kitty", "is", "for", "my",
+		"good", "Mr." };
+	const char *word2[] = {
+		"Darling", "there", "now", "Hunk", "Bond" };
+	const char *word3[] = { "anybody", "I" };
+	const char *word4[] = { "out", "want" };
+	const char *word5[] = { "there", "you" };
+	const char **words;
+	char **l;
+	int len;
+	int i;
+
+	switch(word) {
+	case 1:
+		words = word1;
+		len = ARRAY_SIZE(word1);
+		break;
+	case 2:
+		words = word2;
+		len = ARRAY_SIZE(word2);
+		break;
+	case 3:
+		words = word3;
+		len = ARRAY_SIZE(word3);
+		break;
+	case 4:
+		words = word4;
+		len = ARRAY_SIZE(word4);
+		break;
+	case 5:
+		words = word5;
+		len = ARRAY_SIZE(word5);
+		break;
+	default:
+		return -1;
+	}
+
+	/*
+	 * We do not worry about matching, the caller will only display
+	 * words that do match "match".
+	 */
+	l = calloc(len, sizeof(char *));
+	if (!l)
+		return -1;
+
+	for (i = 0; i < len; i++) {
+		l[i] = strdup(words[i]);
+		/*
+		 * If the above fails to alloc, the caller will just
+		 * ignore this field. It will be treated as a non-match.
+		 * This may be an issues for the user, but if there's
+		 * memory allocation issues, the user probably has more
+		 * to worry about.
+		 */
+	}
+
+	*list = l;
+	return len;
+}
+
 int main(int argc, char **argv)
 {
-	struct ccli *cli;
+	struct ccli *ccli;
 	char *this_data = "something here";
 
-	cli = ccli_alloc("myprompt> ", STDIN_FILENO, STDOUT_FILENO);
+	ccli = ccli_alloc("myprompt> ", STDIN_FILENO, STDOUT_FILENO);
 
 	ccli_register_command(ccli, "hello", say_hello, this_data);
+
+	ccli_register_completion(ccli, "hello", hello_completion);
 
 	ccli_loop(ccli);
 
