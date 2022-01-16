@@ -8,3 +8,4 @@ lib
 *.so
 libccli.pc
 *.swp
+*.patch
