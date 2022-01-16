@@ -210,6 +210,11 @@ static int line_parse(struct line_buf *line, char ***pargv)
 				break;
 			}
 		}
+
+		/* Do not include the space that was found */
+		if (last)
+			p--;
+
 		len = p - word;
 
 		arg = malloc(len + 1);
