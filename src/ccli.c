@@ -23,9 +23,6 @@
 
 #define DEFAULT_HISTORY_MAX 256
 
-static struct termios savein;
-static struct termios saveout;
-
 struct command {
 	char			*cmd;
 	ccli_command_callback	callback;
@@ -34,6 +31,8 @@ struct command {
 };
 
 struct ccli {
+	struct termios		savein;
+	struct termios		saveout;
 	int			history_max;
 	int			history_size;
 	int			current_line;
@@ -45,10 +44,10 @@ struct ccli {
 	char			**history;
 };
 
-static void cleanup(void)
+static void cleanup(struct ccli *ccli)
 {
-	tcsetattr(STDIN_FILENO, TCSANOW, &savein);
-	tcsetattr(STDOUT_FILENO, TCSANOW, &saveout);
+	tcsetattr(ccli->in, TCSANOW, &ccli->savein);
+	tcsetattr(ccli->out, TCSANOW, &ccli->saveout);
 };
 
 static void echo(struct ccli *ccli, char ch)
@@ -175,14 +174,12 @@ struct ccli *ccli_alloc(const char *prompt, int in, int out)
 
 	ccli->history_max = DEFAULT_HISTORY_MAX;
 
-	memset(&savein, 0, sizeof(savein));
-	memset(&saveout, 0, sizeof(saveout));
-	memset(&ttyin, 0, sizeof(savein));
+	memset(&ccli->savein, 0, sizeof(ccli->savein));
+	memset(&ccli->saveout, 0, sizeof(ccli->saveout));
+	memset(&ttyin, 0, sizeof(ccli->savein));
 
-	tcgetattr(STDIN_FILENO, &savein);
-	tcgetattr(STDOUT_FILENO, &saveout);
-
-	atexit(cleanup);
+	tcgetattr(STDIN_FILENO, &ccli->savein);
+	tcgetattr(STDOUT_FILENO, &ccli->saveout);
 
 	tcgetattr(in, &ttyin);
 	ttyin.c_lflag &= ~ICANON;
@@ -210,6 +207,8 @@ void ccli_free(struct ccli *ccli)
 
 	if (!ccli)
 		return;
+
+	cleanup(ccli);
 
 	free(ccli->prompt);
 
