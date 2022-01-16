@@ -7,3 +7,4 @@ lib
 *.d
 *.so
 libccli.pc
+*.patch
