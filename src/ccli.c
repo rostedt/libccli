@@ -39,8 +39,10 @@ struct ccli {
 	int			in;
 	int			out;
 	int			nr_commands;
-	char			*prompt;
 	struct command		*commands;
+	struct command		enter;
+	struct command		unknown;
+	char			*prompt;
 	char			**history;
 };
 
@@ -134,6 +136,23 @@ static int history_down(struct ccli *ccli, struct line_buf *line)
 	return 0;
 }
 
+static int unknown_default(struct ccli *ccli, const char *command,
+			   const char *line, void *data,
+			   int argc, char **argv)
+{
+	echo_str(ccli, "Command not found: ");
+	echo_str(ccli, argv[0]);
+	echo(ccli, '\n');
+	return 0;
+}
+
+static int enter_default(struct ccli *ccli, const char *command,
+			 const char *line, void *data,
+			 int argc, char **argv)
+{
+	return 0;
+}
+
 static int exec_exit(struct ccli *ccli, const char *command,
 		     const char *line, void *data,
 		     int argc, char **argv)
@@ -187,6 +206,8 @@ struct ccli *ccli_alloc(const char *prompt, int in, int out)
 	tcsetattr(in, TCSANOW, (void*)&ttyin);
 
 	ccli_register_command(ccli, "exit", exec_exit, NULL);
+	ccli->unknown.callback = unknown_default;
+	ccli->enter.callback = enter_default;
 
 	return ccli;
 
@@ -322,6 +343,58 @@ int ccli_register_command(struct ccli *ccli, const char *command_name,
 }
 
 /**
+ * ccli_register_default - Register a callback for just "enter".
+ * @ccli: The CLI descriptor to register the default for.
+ * @callback: The callback function to call when just "enter" is hit.
+ * @data: Data to pass to the @callback function.
+ *
+ * When the user hits enter with nothing on the command line, the
+ * @callback function will be called just like any other command is
+ * called, but the command_name parameter will be empty.
+ *
+ * Returns 0 on success and -1 on error.
+ */
+int ccli_register_default(struct ccli *ccli,
+			  ccli_command_callback callback, void *data)
+{
+	if (!ccli || !callback) {
+		errno = -EINVAL;
+		return -1;
+	}
+
+	ccli->enter.callback = callback;
+	ccli->enter.data = data;
+
+	return 0;
+}
+
+/**
+ * ccli_register_unknown - Register a callback for unknown commands.
+ * @ccli: The CLI descriptor to register the default for.
+ * @callback: The callback function to call when a command is unknown
+ * @data: Data to pass to the @callback function.
+ *
+ * When the user hits enters a command that is not registered, the
+ * @callback function will be called just like any other command is
+ * called.
+ *
+ * Returns 0 on success and -1 on error.
+ */
+int ccli_register_unknown(struct ccli *ccli,
+			  ccli_command_callback callback, void *data)
+{
+	if (!ccli || !callback) {
+		errno = -EINVAL;
+		return -1;
+	}
+
+	ccli->unknown.callback = callback;
+	ccli->unknown.data = data;
+
+	return 0;
+}
+
+/**
  * ccli_register_completion - Register a completion for command
  * @ccli: The CLI descriptor to register a completion for.
  * @command_name: The command that the completion is for.
@@ -366,7 +439,9 @@ static int execute(struct ccli *ccli, struct line_buf *line)
 	}
 
 	if (!argc)
-		return 0;
+		return ccli->enter.callback(ccli, "", line->line,
+					    ccli->enter.data,
+					    0, NULL);
 
 	cmd = find_command(ccli, argv[0]);
 
@@ -375,9 +450,9 @@ static int execute(struct ccli *ccli, struct line_buf *line)
 				    line->line, cmd->data,
 				    argc, argv);
 	} else {
-		echo_str(ccli, "Command not found: ");
-		echo_str(ccli, argv[0]);
-		echo(ccli, '\n');
+		ret = ccli->unknown.callback(ccli, argv[0], line->line,
+					     ccli->unknown.data,
+					     argc, argv);
 	}
 
 	free_argv(argc, argv);

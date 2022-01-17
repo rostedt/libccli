@@ -3,8 +3,8 @@ libccli(3)
 
 NAME
 ----
-ccli_alloc, ccli_free, ccli_register_command, ccli_register_completion,
-ccli_loop, ccli_printf - A CLI interface for C programs.
+ccli_alloc, ccli_free, ccli_register_command, ccli_register_completion, ccli_register_default,
+ccli_register_unknown, ccli_loop, ccli_printf - A CLI interface for C programs.
 
 SYNOPSIS
 --------
@@ -22,6 +22,16 @@ int *ccli_register_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_comm
 int *ccli_register_completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
 			  int (pass:[*]_completion_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
 						   int, const char pass:[*], char pass:[***], void pass:[*]));
+
+int *ccli_register_default*(struct ccli pass:[*]_ccli_,
+			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
+						   void pass:[*], int, char pass:[**]),
+			  void pass:[*]_data_);
+
+int *ccli_register_unknown*(struct ccli pass:[*]_ccli_,
+			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
+						   void pass:[*], int, char pass:[**]),
+			  void pass:[*]_data_);
 
 int *ccli_loop*(struct ccli pass:[*]_ccli_);
 
@@ -149,6 +159,20 @@ words in the _line_ before the cursor. An address of a string array
 is passed to _argv_ and that will be allocated and the strings will be
 assigned from the line. It must then be freed with *ccli_argv_free()*.
 
+The default operation of what happens when the user just hits enter (or
+just has white space on the line) can be overridden with
+*ccli_register_default()*. The _callback_ acts the same as for
+*ccli_register_command()* but what gets passed to it is slightly different.
+The _command_ will be an empty string (""), _argc_ will be 1 and _argv_
+will be NULL.
+
+The operation of what happens when the user enters a command that is not
+registered can be overridden with *ccli_register_known()*. The _callback_
+of this function will be called no registered command matches what the
+user entered. The _callback_ for this acts the same as for
+*ccli_register_command()*, where the first word entered will be passed in
+as the _command_.
+
 RETURN VALUE
 ------------
 *ccli_alloc()* returns the descriptor to use to control the _ccfi_ interface,
@@ -157,6 +181,10 @@ and NULL on error.
 *ccli_loop()* returns 0 on success (exited via a command) and -1 on error.
 
 *ccli_registrer_command()* returns 0 on success and -1 on error.
+
+*ccli_registrer_default()* returns 0 on success and -1 on error.
+
+*ccli_registrer_default()* returns 0 on success and -1 on error.
 
 *ccli_register_completion()* returns 0 on success and -1 on error.
 
@@ -172,7 +200,7 @@ The following errors are for all the above calls:
 
 *ENOMEM* Memory allocation error.
 
-*EINVAL* One of the input parameters was invalid. 
+*EINVAL* One of the input parameters was invalid.
 
 For *ccli_register_command()* or *ccli_register_completion()*:
 
