@@ -80,6 +80,7 @@ struct rfile {
 	int		fd;
 	size_t		pos;
 	size_t		size;
+	int		len;
 };
 
 enum {
@@ -311,6 +312,9 @@ static int read_file(struct ccli *ccli, const char *command,
 		break;
 	}
 
+	/* For repeat operations */
+	rf->len = size;
+
 	return 0;
 }
 
@@ -435,6 +439,9 @@ static int dump_file(struct ccli *ccli, const char *command,
 		}
 	}
 
+	/* For repeat operations */
+	rf->len = len;
+
 	if (rf->pos + len > rf->size)
 		len = rf->size - rf->pos;
 
@@ -471,6 +478,51 @@ static int dump_file(struct ccli *ccli, const char *command,
 		i += 15;
 	}
 
+	return 0;
+}
+
+static void move_forward(struct ccli *ccli, void *data, int len)
+{
+	char go[64];
+	char *goto_argv[] = { "goto", "+", go, NULL };
+
+	snprintf(go, 64, "%d", len);
+
+	goto_file(ccli, "goto", "goto +count", data, 3, goto_argv);
+}
+
+static int do_default(struct ccli *ccli, const char *command,
+		      const char *line, void *data,
+		      int argc, char **argv)
+{
+	struct rfile *rf = data;
+	const char *hist;
+	size_t this_pos = rf->pos;
+
+	hist = ccli_history(ccli, 1);
+	if (!hist)
+		return 0;
+
+	argc = ccli_line_parse(hist, &argv);
+	if (argc < 1)
+		return 0;
+
+	if (strcmp(argv[0], "read") == 0) {
+		move_forward(ccli, data, rf->len);
+		if (rf->pos == this_pos)
+			goto out;
+		read_file(ccli, "read", hist, data, argc, argv);
+	}
+
+	else if (strcmp(argv[0], "dump") == 0) {
+		move_forward(ccli, data, rf->len);
+		if (rf->pos == this_pos)
+			goto out;
+		dump_file(ccli, "dump", hist, data, argc, argv);
+	}
+
+ out:
+	ccli_argv_free(argv);
 	return 0;
 }
 
@@ -532,6 +584,8 @@ int main (int argc, char **argv)
 	ccli_register_command(cli, "quit", do_quit, &rf);
 
 	ccli_register_completion(cli, "read", read_completion);
+
+	ccli_register_default(cli, do_default, &rf);
 
 	ccli_loop(cli);
 	ccli_free(cli);

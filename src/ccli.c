@@ -425,6 +425,30 @@ int ccli_register_completion(struct ccli *ccli, const char *command_name,
 	return 0;
 }
 
+/**
+ * ccli_history - return a previous entered line from the past
+ * @ccli: The ccli descriptor to read the histor from
+ * @past: How far back to go
+ *
+ * Reads the line that happened @past commands ago and returns it.
+ *
+ * Returns a string that should not be modifiied if there was 
+ *   a command that happened @past commands ago, otherwise NULL.
+ */
+const char *ccli_history(struct ccli *ccli, int past)
+{
+	int idx;
+
+	if (past > ccli->history_size ||
+	    past > ccli->history_max)
+		return NULL;
+
+	idx = ccli->history_size - past;
+	idx %= ccli->history_max;
+
+	return ccli->history[idx];
+}
+
 static int execute(struct ccli *ccli, struct line_buf *line)
 {
 	struct command *cmd;

@@ -40,4 +40,6 @@ int ccli_register_unknown(struct ccli *ccli, ccli_command_callback callback,
 int ccli_line_parse(const char *line, char ***argv);
 void ccli_argv_free(char **argv);
 
+const char *ccli_history(struct ccli *ccli, int past);
+
 #endif
