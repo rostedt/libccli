@@ -3,9 +3,11 @@
 bin/
 build_prefix
 ccli_version.h
-lib
+lib/
 *.d
 *.so
 libccli.pc
 *.swp
 *.patch
+patches/
+.pc/
