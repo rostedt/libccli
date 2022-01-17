@@ -4,7 +4,7 @@ libccli(3)
 NAME
 ----
 ccli_alloc, ccli_free, ccli_register_command, ccli_register_completion, ccli_register_default,
-ccli_register_unknown, ccli_loop, ccli_printf - A CLI interface for C programs.
+ccli_register_unknown, ccli_loop - A CLI interface for C programs.
 
 SYNOPSIS
 --------
@@ -34,13 +34,6 @@ int *ccli_register_unknown*(struct ccli pass:[*]_ccli_,
 			  void pass:[*]_data_);
 
 int *ccli_loop*(struct ccli pass:[*]_ccli_);
-
-
-int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
-
-int *ccli_parse_line*(const char pass:[*]_line_, char pass:[ ***]argv);
-void *ccli_argv_free*(char pass:[**]argv);
-
 --
 
 DESCRIPTION
@@ -148,17 +141,6 @@ is returned, then *list should not be allocated, and any allocation done by _com
 should be cleaned up before the return. See EXAMPLE for an example of handling
 completions for a specific command.
 
-If a callback needs to write to the output file descriptor passed in as _out_ to
-*ccli_alloc()*, it can use *ccli_printf()*. It has the same format as normal
-*printf(3)* but the first parameter is the _ccfi_ descriptor passed to *ccli_alloc()*.
-
-The *ccli_line_parse()* is a helper function to parse the line like the
-command line would parse it and send it to the _callback_. This could
-be handy for the _completion_ callback if it needs access to the
-words in the _line_ before the cursor. An address of a string array
-is passed to _argv_ and that will be allocated and the strings will be
-assigned from the line. It must then be freed with *ccli_argv_free()*.
-
 The default operation of what happens when the user just hits enter (or
 just has white space on the line) can be overridden with
 *ccli_register_default()*. The _callback_ acts the same as for
@@ -187,12 +169,6 @@ and NULL on error.
 *ccli_registrer_default()* returns 0 on success and -1 on error.
 
 *ccli_register_completion()* returns 0 on success and -1 on error.
-
-*ccli_printf()* returns the number of characters written or -1 on error.
-
-*ccli_line_parse()* returns the number of words parsed in the line
-   and allocated in _argv_, or -1 on error. Note, the value returned
-   is 1 or more, then _argv_ must be freed with *ccli_argv_free()*.
 
 ERRORS
 ------
@@ -340,7 +316,11 @@ FILES
 
 SEE ALSO
 --------
-_libccli(3)_,
+*libccli(3)*,
+*ccli_printf(3)*,
+*ccli_line_parse(3)*,
+*ccli_argv_free(3)*,
+*ccli_history(3)*
 
 AUTHOR
 ------

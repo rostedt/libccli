@@ -1,0 +1,180 @@
+libccli(3)
+==========
+
+NAME
+----
+ccli_printf, ccli_parse_line, ccli_argv_free, ccli_history - Commands for libccli callbacks.
+
+SYNOPSIS
+--------
+[verse]
+--
+*#include <ccli.h>*
+
+int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
+
+int *ccli_parse_line*(const char pass:[*]_line_, char pass:[ ***]argv);
+void *ccli_argv_free*(char pass:[**]argv);
+
+const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int past);
+--
+
+DESCRIPTION
+-----------
+libccli is a simple API to create a CLI interface with the user.
+After a descriptor is created from *ccli_alloc(3)* and a command is registered
+with *ccli_register_command(3)* or one of the similar functions, these are
+the functions that can be useful in the callback.
+
+If a callback needs to write to the output file descriptor passed in as _out_ to
+*ccli_alloc()*, it can use *ccli_printf()*. It has the same format as normal
+*printf(3)* but the first parameter is the _ccfi_ descriptor passed to *ccli_alloc()*.
+
+The *ccli_line_parse()* is a helper function to parse the line like the
+command line would parse it and send it to the _callback_. This could
+be handy for the _completion_ callback if it needs access to the
+words in the _line_ before the cursor. An address of a string array
+is passed to _argv_ and that will be allocated and the strings will be
+assigned from the line. It must then be freed with *ccli_argv_free()*.
+
+The history of previous commands that were entered could be retrieved
+via *ccli_history()* to get the pervious commands entered into the
+_ccli_ descriptor. It will retrieve the command that was entered _past_
+commands ago. This could be useful to replay a command from the default
+callback this is registered by *ccli_register_default(3)*.
+
+RETURN VALUE
+------------
+*ccli_printf()* returns the number of characters written or -1 on error.
+
+*ccli_line_parse()* returns the number of words parsed in the line
+   and allocated in _argv_, or -1 on error. Note, the value returned
+   is 1 or more, then _argv_ must be freed with *ccli_argv_free()*.
+
+*ccli_history()* returns the string that represents a command that was
+   entered before defined by the _past_ parameter. If _past_ goes back
+   farther than the history that is stored, then NULL is returned.
+   Note that the string that is returned is internal to the _ccli_
+   descriptor and should not be modified.
+
+ERRORS
+------
+The following errors are for all the above calls:
+
+*ENOMEM* Memory allocation error.
+
+*EINVAL* One of the input parameters was invalid.
+
+EXAMPLE
+-------
+[source,c]
+--
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <ccli.h>
+
+static int reset_counter(struct ccli *ccli, const char *cmd, const char *line,
+			 void *data, int argc, char **argv)
+{
+	long counter = *(long *)data;
+
+	counter = 0;
+	if (argc > 1)
+		counter = atoi(argv[1]);
+
+	*(long *)data = counter;
+
+	ccli_printf(ccli, "%d\n", counter);
+
+	return 0;
+}
+
+static int do_default(struct ccli *ccli, const char *cmd, const char *line,
+		      void *data, int argc, char **argv)
+{
+	long counter = *(long *)data;
+	const char *hist;
+	int inc = 1;
+
+	hist = ccli_history(ccli, 1);
+	if (hist) {
+		argc = ccli_line_parse(hist, &argv);
+		if (argc > 1) {
+			inc = atoi(argv[1]);
+			ccli_argv_free(argv);
+		}
+	}
+
+	counter += inc;
+
+	*(long *)data = counter;
+
+	ccli_printf(ccli, "%d\n", counter);
+
+	return 0;
+}
+
+int main(int argc, char **argv)
+{
+	long counter = 0;
+
+	struct ccli *ccli;
+
+	ccli = ccli_alloc("myprompt> ", STDIN_FILENO, STDOUT_FILENO);
+
+	ccli_register_command(ccli, "reset", reset_counter, (void *)&counter);
+
+	ccli_register_default(ccli, do_default, (void *)&counter);
+
+	ccli_loop(ccli);
+
+	ccli_free(ccli);
+
+	return 0;
+}
+--
+FILES
+-----
+[verse]
+--
+*ccli.h*
+	Header file to include in order to have access to the library APIs.
+*-ccli*
+	Linker switch to add when building a program that uses the library.
+--
+
+SEE ALSO
+--------
+*libccli(3)*,
+*ccli_alloc(3)*,
+*ccli_free(3)*,
+*ccli_register_command(3)*,
+*ccli_register_completion(3)*,
+*ccli_register_default(3)*,
+*ccli_register_unknown(3)*,
+*ccli_loop(3)*
+
+AUTHOR
+------
+[verse]
+--
+*Steven Rostedt* <rostedt@goodmis.org>
+--
+REPORTING BUGS
+--------------
+Report bugs to  <rostedt@goodmis.org>
+
+LICENSE
+-------
+libccli is Free Software licensed under the GNU LGPL 2.1
+
+RESOURCES
+---------
+https://github.com/rostedt/libccli
+
+COPYING
+-------
+Copyright \(C) 2022 Steven Rostedt. Free use of this software is granted under
+the terms of the GNU Public License (GPL).
