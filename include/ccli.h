@@ -9,6 +9,11 @@
 
 struct ccli;
 
+struct command_args {
+	char **argv;
+	int argc;
+};
+
 typedef int (*ccli_command_callback)(struct ccli *ccli, const char *command,
 				     const char *line, void *data,
 				     int argc, char **argv);
@@ -37,7 +42,7 @@ int ccli_register_unknown(struct ccli *ccli, ccli_command_callback callback,
 			  void *data);
 
 
-int ccli_line_parse(const char *line, char ***argv);
+int ccli_line_parse(const char *line, struct command_args **pcmd_args);
 void ccli_argv_free(char **argv);
 
 const char *ccli_history(struct ccli *ccli, int past);

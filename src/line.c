@@ -6,8 +6,11 @@
 
 __hidden void free_argv(int argc, char **argv)
 {
-	for (argc--; argc >= 0; argc--)
+	printf("freeing %d elements\n", argc);
+	for (argc--; argc >= 0; argc--) {
+		printf("freeing: %s\n", argv[argc]);
 		free(argv[argc]);
+	}
 	free(argv);
 }
 
@@ -128,7 +131,7 @@ __hidden int line_copy(struct line_buf *dst, struct line_buf *src, int len)
  *    @pargv should be freed with ccli_argv_free(), but it does
  *    not need to be called on the return of zero or less.
  */
-int ccli_line_parse(const char *line, char ***pargv)
+int ccli_line_parse(const char *line, struct command_args **pcmd_args)
 {
 	char **argv = NULL;
 	char *arg;
@@ -140,14 +143,15 @@ int ccli_line_parse(const char *line, char ***pargv)
 	char q = 0;
 	int argc = 0;
 	int len;
+	int cmd_idx = 0;
 
-	if (!pargv) {
+	if (!pcmd_args) {
 		errno = -EINVAL;
 		return -1;
 	}
 
 	/* In case ccli_argv_free() gets called on a return of zero */
-	*pargv = NULL;
+	*pcmd_args = NULL;
 
 	while (*p) {
 		bool last = false;
@@ -229,13 +233,33 @@ int ccli_line_parse(const char *line, char ***pargv)
 			}
 		}
 		*w = '\0';
-		argv[argc++] = arg;
-		argv[argc] = NULL;
+
+		if (strcmp(arg, "&&") == 0) {
+			if (cmd_idx == 0) {
+				*pcmd_args = (struct command_args *) malloc(sizeof(struct command_args));
+			} else {
+				*pcmd_args = (struct command_args *) realloc(*pcmd_args, sizeof(struct command_args) * (cmd_idx + 1));
+			}
+			(*pcmd_args + cmd_idx)->argv = argv;
+			(*pcmd_args + cmd_idx)->argc = argc;
+			argc = 0;
+			argv = malloc(sizeof(*v)); // TODO what to do here?
+			++cmd_idx;
+		} else {
+			argv[argc++] = arg;
+			argv[argc] = NULL;
+		}
 	}
 
-	*pargv = argv;
-
-	return argc;
+	if (cmd_idx == 0) {
+		*pcmd_args = (struct command_args *) malloc(sizeof(struct command_args));
+	} else {
+		*pcmd_args = (struct command_args *) realloc(*pcmd_args, sizeof(struct command_args) * (cmd_idx + 1));
+	}
+	(*pcmd_args + cmd_idx)->argv = argv;
+	(*pcmd_args + cmd_idx)->argc = argc;
+ 
+	return cmd_idx + 1;
 
  fail:
 	free_argv(argc, argv);
@@ -260,9 +284,9 @@ void ccli_argv_free(char **argv)
 	free(argv);
 }
 
-__hidden int line_parse(struct line_buf *line, char ***pargv)
+__hidden int line_parse(struct line_buf *line, struct command_args **pcmd_args)
 {
-	return ccli_line_parse(line->line, pargv);
+	return ccli_line_parse(line->line, pcmd_args);
 }
 
 __hidden void line_replace(struct line_buf *line, char *str)

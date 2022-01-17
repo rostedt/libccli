@@ -452,34 +452,36 @@ const char *ccli_history(struct ccli *ccli, int past)
 static int execute(struct ccli *ccli, struct line_buf *line)
 {
 	struct command *cmd;
-	char **argv;
-	int argc;
+	struct command_args *cmd_args;
+	int cmdc;
 	int ret = 0;
 
-	argc = line_parse(line, &argv);
-	if (argc < 0) {
+	cmdc = line_parse(line, &cmd_args);
+	if (cmdc < 0) {
 		echo_str(ccli, "Error parsing command\n");
 		return 0;
 	}
-
-	if (!argc)
+	printf("at `execute` ... cmdc = %d\n", cmdc);
+	if (!cmdc)
 		return ccli->enter.callback(ccli, "", line->line,
 					    ccli->enter.data,
 					    0, NULL);
 
-	cmd = find_command(ccli, argv[0]);
+	for (int c = 0; c < cmdc; c++) {
+		cmd = find_command(ccli, cmd_args[c].argv[0]);
+		if (cmd) {
+			printf("Executing command: %s\n", cmd->cmd);
+			ret = cmd->callback(ccli, cmd->cmd,
+						line->line, cmd->data,
+						cmd_args[c].argc, cmd_args[c].argv);
+		} else {
+			ret = ccli->unknown.callback(ccli, cmd_args[c].argv[0], line->line,
+							ccli->unknown.data,
+							cmd_args[c].argc, cmd_args[c].argv);
+		}
 
-	if (cmd) {
-		ret = cmd->callback(ccli, cmd->cmd,
-				    line->line, cmd->data,
-				    argc, argv);
-	} else {
-		ret = ccli->unknown.callback(ccli, argv[0], line->line,
-					     ccli->unknown.data,
-					     argc, argv);
+		free_argv(cmd_args[c].argc, cmd_args[c].argv);
 	}
-
-	free_argv(argc, argv);
 
 	history_add(ccli, line->line);
 
@@ -516,11 +518,13 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	struct command *cmd;
 	struct line_buf copy;
 	char **list = NULL;
+	struct command_args *cmd_args;
+	int argc;
 	char **argv;
 	char *match;
 	int matched = 0;
 	int word;
-	int argc;
+	int cmdc;
 	int mlen;
 	int len;
 	int cnt = 0;
@@ -532,11 +536,14 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	if (ret < 0)
 		return;
 
-	argc = line_parse(&copy, &argv);
-	if (argc <= 0)
+	cmdc = line_parse(&copy, &cmd_args);
+	if (cmdc <= 0)
 		goto out;
 
-	word = argc - 1;
+	argc = cmd_args[cmdc - 1].argc;
+	argv = cmd_args[cmdc - 1].argv;
+
+	word =  - 1;
 
 	/* If the cursor is on a space, there's no word to match */
 	if (ISSPACE(copy.line[copy.pos - 1])) {
