@@ -432,7 +432,7 @@ int ccli_register_completion(struct ccli *ccli, const char *command_name,
  *
  * Reads the line that happened @past commands ago and returns it.
  *
- * Returns a string that should not be modifiied if there was 
+ * Returns a string that should not be modifiied if there was
  *   a command that happened @past commands ago, otherwise NULL.
  */
 const char *ccli_history(struct ccli *ccli, int past)
