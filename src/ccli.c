@@ -661,6 +661,22 @@ static void refresh(struct ccli *ccli, struct line_buf *line)
 		echo(ccli, '\b');
 }
 
+/**
+ * ccli_line_refresh: Refresh the displayed line.
+ * @ccli: The CLI descriptor to refresh the command line for.
+ *
+ * In case the interrupt callback makes modifications to the command line,
+ * it can call this to refresh it to show the conents of the internal
+ * line.
+ */
+void ccli_line_refresh(struct ccli *ccli)
+{
+	if (!ccli || !ccli->line)
+		return;
+
+	refresh(ccli, ccli->line);
+}
+
 static void insert_word(struct ccli *ccli, struct line_buf *line,
 			const char *word, int len)
 {

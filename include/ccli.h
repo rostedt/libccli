@@ -52,6 +52,8 @@ void ccli_argv_free(char **argv);
 void ccli_line_clear(struct ccli *ccli);
 int ccli_line_inject(struct ccli *ccli, const char *str, int pos);
 
+void ccli_line_refresh(struct ccli *ccli);
+
 const char *ccli_history(struct ccli *ccli, int past);
 
 int ccli_execute(struct ccli *ccli, const char *line, bool hist);

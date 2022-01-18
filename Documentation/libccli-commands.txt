@@ -3,7 +3,7 @@ libccli(3)
 
 NAME
 ----
-ccli_printf, ccli_line_parse, ccli_line_reset, ccli_line_inject,
+ccli_printf, ccli_line_parse, ccli_line_reset, ccli_line_inject, ccli_line_refresh,
 ccli_argv_free, ccli_history, ccli_execute - Commands for libccli callbacks.
 
 SYNOPSIS
@@ -19,6 +19,7 @@ void *ccli_argv_free*(char pass:[**]_argv_);
 
 void *ccli_line_reset*(struct ccli pass:[*]_ccli_);
 int *ccli_line_inject*(struct ccli pass:[*]_ccli_, char pass:[*]string, int _pos_);
+void *ccli_line_refresh*(struct ccli pass:[*]_ccli_);
 
 const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int _past_);
 const int *ccli_execute*(struct ccli pass:[*]_ccli_, const char pass:[*]_line_, bool _hist_);
@@ -53,6 +54,11 @@ The *ccli_line_inject*() will insert _string_ into the command line
 saved internally, at _pos_. If _pos_ is negative, then it will insert
 the text at the current location of the cursor. If _pos_ is greater than
 the string length of the current command line, it will just append it.
+
+If the interrupt callback uses *ccli_line_reset()* or *ccli_line_inject()*
+it may want to call *ccli_line_refresh()*. This will update what is
+displayed to the user. It will restore the prompt and what is on the
+the command line internally.
 
 The history of previous commands that were entered could be retrieved
 via *ccli_history()* to get the pervious commands entered into the
@@ -115,7 +121,7 @@ static int reset_counter(struct ccli *ccli, const char *cmd, const char *line,
 
 	*(long *)data = counter;
 
-	ccli_printf(ccli, "%d\n", counter);
+	ccli_printf(ccli, "%ld\n", counter);
 
 	return 0;
 }
@@ -140,7 +146,19 @@ static int do_default(struct ccli *ccli, const char *cmd, const char *line,
 
 	*(long *)data = counter;
 
-	ccli_printf(ccli, "%d\n", counter);
+	ccli_printf(ccli, "%ld\n", counter);
+
+	return 0;
+}
+
+static int do_interrupt(struct ccli *ccli, const char *line, int pos, void *data)
+{
+	long counter = *(long *)data;
+	char cnt[64];
+
+	snprintf(cnt, 64, " %ld", counter);
+	ccli_line_inject(ccli, cnt, strlen(line));
+	ccli_line_refresh(ccli);
 
 	return 0;
 }
@@ -173,6 +191,7 @@ int main(int argc, char **argv)
 	ccli_register_command(ccli, "banner", show_banner, NULL);
 
 	ccli_register_default(ccli, do_default, (void *)&counter);
+	ccli_register_interrupt(ccli, do_interrupt, &counter);
 
 	ccli_execute(ccli, "banner Show a running counter", false);
 	ccli_loop(ccli);
