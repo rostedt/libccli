@@ -523,6 +523,15 @@ const char *ccli_history(struct ccli *ccli, int past)
 	return ccli->history[idx];
 }
 
+/**
+ * ccli_line_clear - clear the internal line
+ * ccli: The CLI desciptor to clear the command line for.
+ *
+ * This will clear out the internal contents stored for the command.
+ * Note, it does not affect what the user is displayed.
+ * This is useful for the interrupt callback to clear the line if
+ * need be.
+ */
 void ccli_line_clear(struct ccli *ccli)
 {
 	if (!ccli || !ccli->line)
