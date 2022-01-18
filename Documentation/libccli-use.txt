@@ -3,8 +3,7 @@ libccli(3)
 
 NAME
 ----
-ccli_alloc, ccli_free, ccli_register_command, ccli_register_completion, ccli_register_default,
-ccli_register_unknown, ccli_register_interrupt, ccli_unregister_command, ccli_loop - A CLI interface for C programs.
+ccli_alloc, ccli_free, ccli_register_command, ccli_register_completion, ccli_unregister_command, ccli_loop - A CLI interface for C programs.
 
 SYNOPSIS
 --------
@@ -22,19 +21,6 @@ int *ccli_register_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_comm
 int *ccli_register_completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
 			  int (pass:[*]_completion_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
 						   int, const char pass:[*], char pass:[***], void pass:[*]));
-
-int *ccli_register_default*(struct ccli pass:[*]_ccli_,
-			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
-						   void pass:[*], int, char pass:[**]),
-			  void pass:[*]_data_);
-
-int *ccli_register_unknown*(struct ccli pass:[*]_ccli_,
-			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
-						   void pass:[*], int, char pass:[**]),
-			  void pass:[*]_data_);
-
-int *ccli_register_interrupt*(struct ccli pass:[*]_ccli_,
-			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], int, void pass:[*]);
 
 int *ccli_unregister_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_);
 
@@ -149,43 +135,6 @@ is returned, then *list should not be allocated, and any allocation done by _com
 should be cleaned up before the return. See EXAMPLE for an example of handling
 completions for a specific command.
 
-The default operation of what happens when the user just hits enter (or
-just has white space on the line) can be overridden with
-*ccli_register_default()*. The _callback_ acts the same as for
-*ccli_register_command()* but what gets passed to it is slightly different.
-The _command_ will be an empty string (""), _argc_ will be 1 and _argv_
-will be NULL.
-
-The operation of what happens when the user enters a command that is not
-registered can be overridden with *ccli_register_known()*. The _callback_
-of this function will be called no registered command matches what the
-user entered. The _callback_ for this acts the same as for
-*ccli_register_command()*, where the first word entered will be passed in
-as the _command_.
-
-When the user hits "Ctrl^C", the current default operation is to print
-"^C" and exit. But this can be overriden by *ccli_register_interrupt()*,
-which takes a _callback_ with the following prototype::
-
-[verse]
---
-   int *interrupt*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_, const char pass:[*]_line_,
-		 int _pos_, void pass:[*]_data_);
---
-
-When the user hits Ctrl^C, the _callback_ will get called with the following
-parameters:
-
-_ccli_ - will be the _ccli_ descriptor returned by *ccli_alloc()*
-
-_line_ - The full line of what the user had typed.
-
-_pos_  - The current position of the users cursor.
-
-_data_ - The _data_ that was passed in when the _callback_ was registered with
-        *ccli_register_interrupt()*.
-
-
 RETURN VALUE
 ------------
 *ccli_alloc()* returns the descriptor to use to control the _ccfi_ interface,
@@ -194,10 +143,6 @@ and NULL on error.
 *ccli_loop()* returns 0 on success (exited via a command) and -1 on error.
 
 *ccli_registrer_command()* returns 0 on success and -1 on error.
-
-*ccli_registrer_default()* returns 0 on success and -1 on error.
-
-*ccli_registrer_default()* returns 0 on success and -1 on error.
 
 *ccli_register_completion()* returns 0 on success and -1 on error.
 
@@ -376,11 +321,18 @@ FILES
 
 SEE ALSO
 --------
-*libccli(3)*,
-*ccli_printf(3)*,
-*ccli_line_parse(3)*,
-*ccli_argv_free(3)*,
-*ccli_history(3)*
+*libccli*(3),
+*ccli_register_default*(3),
+*ccli_register_unknown*(3),
+*ccli_register_interrupt*(3),
+*ccli_printf*(3),
+*ccli_line_parse*(3),
+*ccli_line_reset*(3),
+*ccli_line_inject*(3),
+*ccli_line_refresh*(3),
+*ccli_argv_free*(3),
+*ccli_history*(3),
+*ccli_execute*(3)
 
 AUTHOR
 ------
