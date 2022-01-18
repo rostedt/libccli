@@ -50,6 +50,7 @@ int ccli_line_parse(const char *line, char ***argv);
 void ccli_argv_free(char **argv);
 
 void ccli_line_clear(struct ccli *ccli);
+int ccli_line_inject(struct ccli *ccli, const char *str, int pos);
 
 const char *ccli_history(struct ccli *ccli, int past);
 

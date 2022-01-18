@@ -540,6 +540,41 @@ void ccli_line_clear(struct ccli *ccli)
 	line_reset(ccli->line);
 }
 
+/**
+ * ccli_line_inject - Inject content into the command line at pos.
+ * @ccli: The CLI descriptor to inject content into.
+ * @str: The string to inject.
+ * @pos: The position to inject the line into.
+ *
+ * This injects content into the internal command line at @pos. If @pos
+ * is negative, then it just injects @str at the current location
+ * of line->pos. If @pos is greater than the length of line->line,
+ * then it will simply append the string to the line.
+ *
+ * Returns 0 on success or -1 on failure.
+ */
+int ccli_line_inject(struct ccli *ccli, const char *str, int pos)
+{
+	struct line_buf *line;
+	int ret = 0;
+	int i;
+
+	if (!ccli || !ccli->line || !str) {
+		errno = -EINVAL;
+		return -1;
+	}
+
+	line = ccli->line;
+
+	if (pos >= 0)
+		line->pos = pos > line->len ? line->len : pos;
+
+	for (i = 0; i < strlen(str); i++)
+		ret |= line_insert(line, str[i]);
+
+	return ret;
+}
+
 static int execute(struct ccli *ccli, struct line_buf *line, bool hist)
 {
 	struct command *cmd;
