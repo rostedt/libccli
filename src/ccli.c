@@ -290,6 +290,43 @@ static struct command *find_command(struct ccli *ccli, const char *cmd)
 }
 
 /**
+ * ccli_unregister_command - Remove a command from the CLI interface
+ * @ccli: The CLI descriptor to remove the command from
+ * @command_name: The command name to remove
+ *
+ * Removes the registered command named @command_name from @ccli.
+ *
+ * Returns 0 on successful removal, or -1 on error or @command_name not found.
+ *   ERRNO will only be set for error and will not be touched if the
+ *  @command_name was not found.
+ */
+int ccli_unregister_command(struct ccli *ccli, const char *command_name)
+{
+	struct command *commands;
+	int cnt;
+
+	if (!ccli || !command_name) {
+		errno = -EINVAL;
+		return -1;
+	}
+
+	commands = find_command(ccli, command_name);
+	if (!commands)
+		return -1;
+
+	free(commands->cmd);
+
+	cnt = (ccli->nr_commands - (commands - ccli->commands)) - 1;
+	if (cnt)
+		memmove(commands, commands + 1, cnt * sizeof(*commands));
+	ccli->nr_commands--;
+	commands = &ccli->commands[ccli->nr_commands];
+	memset(commands, 0, sizeof(*commands));
+
+	return 0;
+}
+
+/**
  * ccli_register_command - Register a command for the CLI interface.
  * @ccli: The CLI descriptor to register a command for.
  * @command_name: the text that will execute the command.

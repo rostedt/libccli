@@ -37,7 +37,7 @@ int ccli_register_default(struct ccli *ccli, ccli_command_callback callback,
 
 int ccli_register_unknown(struct ccli *ccli, ccli_command_callback callback,
 			  void *data);
-
+int ccli_unregister_command(struct ccli *ccli, const char *command);
 
 int ccli_line_parse(const char *line, char ***argv);
 void ccli_argv_free(char **argv);
