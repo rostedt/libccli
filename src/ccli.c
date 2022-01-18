@@ -35,6 +35,7 @@ struct ccli {
 	struct termios		savein;
 	struct termios		saveout;
 	struct line_buf		*line;
+	char			*temp_line;
 	int			history_max;
 	int			history_size;
 	int			current_line;
@@ -76,11 +77,16 @@ static void echo_prompt(struct ccli *ccli)
 
 static void clear_line(struct ccli *ccli, struct line_buf *line)
 {
+	int len;
 	int i;
 
 	echo(ccli, '\r');
 
-	for (i = 0; i < line->len; i++)
+	len = line->len;
+	if (ccli->prompt)
+		len += strlen(ccli->prompt);
+
+	for (i = 0; i < len; i++)
 		echo(ccli, ' ');
 }
 
@@ -114,6 +120,7 @@ static int history_up(struct ccli *ccli, struct line_buf *line, int cnt)
 {
 	int current = ccli->current_line;
 	int idx;
+	char *str;
 
 	if (ccli->current_line > cnt)
 		ccli->current_line -= cnt;
@@ -127,8 +134,22 @@ static int history_up(struct ccli *ccli, struct line_buf *line, int cnt)
 	if (current == ccli->current_line)
 		return 1;
 
-	idx = ccli->current_line % ccli->history_max;
 	clear_line(ccli, line);
+
+	/* Store the current line in case it was modifed */
+	str = strdup(ccli->line->line);
+	if (str) {
+		if (current >= ccli->history_size) {
+			free(ccli->temp_line);
+			ccli->temp_line = str;
+		} else {
+			idx = current % ccli->history_max;
+			free(ccli->history[idx]);
+			ccli->history[idx] = str;
+		}
+	}
+
+	idx = ccli->current_line % ccli->history_max;
 	line_replace(line, ccli->history[idx]);
 	return 0;
 }
@@ -137,17 +158,35 @@ static int history_down(struct ccli *ccli, struct line_buf *line, int cnt)
 {
 	int current = ccli->current_line;
 	int idx;
+	char *str;
 
 	ccli->current_line += cnt;
 
 	if (ccli->current_line > (ccli->history_size - 1))
 		ccli->current_line = ccli->history_size - 1;
 
-	if (current == ccli->current_line)
+	if (current == ccli->current_line) {
+		/* Restore the command that was before moving in history */
+		if (ccli->temp_line) {
+			clear_line(ccli, line);
+			line_replace(line, ccli->temp_line);
+			free(ccli->temp_line);
+			ccli->temp_line = NULL;
+		}
 		return 1;
+	}
+
+	clear_line(ccli, line);
+
+	/* Store the current line in case it was modifed */
+	str = strdup(ccli->line->line);
+	if (str) {
+		idx = current % ccli->history_max;
+		free(ccli->history[idx]);
+		ccli->history[idx] = str;
+	}
 
 	idx = ccli->current_line % ccli->history_max;
-	clear_line(ccli, line);
 	line_replace(line, ccli->history[idx]);
 	return 0;
 }
@@ -261,6 +300,7 @@ void ccli_free(struct ccli *ccli)
 		free(ccli->commands[i].cmd);
 
 	free(ccli->commands);
+	free(ccli->temp_line);
 	free(ccli);
 }
 
