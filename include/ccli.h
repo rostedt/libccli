@@ -19,6 +19,9 @@ typedef int (*ccli_completion)(struct ccli *ccli, const char *command,
 			       const char *line, int word, const char *match,
 			       char ***list, void *data);
 
+typedef int (*ccli_interrupt)(struct ccli *ccli, const char *line,
+			      int pos, void *data);
+
 struct ccli *ccli_alloc(const char *prompt, int in, int out);
 void ccli_free(struct ccli *ccli);
 
@@ -37,6 +40,10 @@ int ccli_register_default(struct ccli *ccli, ccli_command_callback callback,
 
 int ccli_register_unknown(struct ccli *ccli, ccli_command_callback callback,
 			  void *data);
+
+int ccli_register_interrupt(struct ccli *ccli, ccli_interrupt callback,
+			    void *data);
+
 int ccli_unregister_command(struct ccli *ccli, const char *command);
 
 int ccli_line_parse(const char *line, char ***argv);

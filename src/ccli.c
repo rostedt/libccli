@@ -42,6 +42,8 @@ struct ccli {
 	struct command		*commands;
 	struct command		enter;
 	struct command		unknown;
+	ccli_interrupt		interrupt;
+	void			*interrupt_data;
 	char			*prompt;
 	char			**history;
 };
@@ -161,6 +163,13 @@ static int exec_exit(struct ccli *ccli, const char *command,
 	return 1;
 }
 
+static int interrupt_default(struct ccli *ccli, const char *line,
+			     int pos, void *data)
+{
+	echo_str(ccli, "^C\n");
+	return 1;
+}
+
 /**
  * ccli_alloc - Allocate a new ccli descriptor.
  * @prompt: The prompt to display (NULL for none)
@@ -208,6 +217,7 @@ struct ccli *ccli_alloc(const char *prompt, int in, int out)
 	ccli_register_command(ccli, "exit", exec_exit, NULL);
 	ccli->unknown.callback = unknown_default;
 	ccli->enter.callback = enter_default;
+	ccli->interrupt = interrupt_default;
 
 	return ccli;
 
@@ -459,6 +469,32 @@ int ccli_register_completion(struct ccli *ccli, const char *command_name,
 	}
 
 	cmd->completion = completion;
+	return 0;
+}
+
+/**
+ * ccli_register_interrupt - Register what to do on SIGINT
+ * @ccli: The CLI descriptor to register to.
+ * @callback: The callback function to call when user hits Ctrl^C
+ * @data: The data to pass to the callback.
+ *
+ * This allows the application to register a function when the user
+ * hits Ctrl^C. Currently the default operation is simply to print
+ * "^C\n" and exit. But this allows the application to override that
+ * operation.
+ *
+ * Returns 0 on success and -1 on error.
+ */
+int ccli_register_interrupt(struct ccli *ccli, ccli_interrupt callback,
+			    void *data)
+{
+	if (!ccli || !callback) {
+		errno = -EINVAL;
+		return -1;
+	}
+
+	ccli->interrupt = callback;
+	ccli->interrupt_data = data;
 	return 0;
 }
 
@@ -770,8 +806,8 @@ int ccli_loop(struct ccli *ccli)
 			do_completion(ccli, &line, tab++);
 			break;
 		case 3: /* ETX */
-			echo_str(ccli, "^C\n");
-			ret = 1;
+			ret = ccli->interrupt(ccli, line.line,
+					      line.pos, ccli->interrupt_data);
 			break;
 		case 27: /* ESC */
 			esc = true;

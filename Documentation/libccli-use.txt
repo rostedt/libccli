@@ -4,7 +4,7 @@ libccli(3)
 NAME
 ----
 ccli_alloc, ccli_free, ccli_register_command, ccli_register_completion, ccli_register_default,
-ccli_register_unknown, ccli_unregister_command, ccli_loop - A CLI interface for C programs.
+ccli_register_unknown, ccli_register_interrupt, ccli_unregister_command, ccli_loop - A CLI interface for C programs.
 
 SYNOPSIS
 --------
@@ -32,6 +32,9 @@ int *ccli_register_unknown*(struct ccli pass:[*]_ccli_,
 			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
 						   void pass:[*], int, char pass:[**]),
 			  void pass:[*]_data_);
+
+int *ccli_register_interrupt*(struct ccli pass:[*]_ccli_,
+			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], int, void pass:[*]);
 
 int *ccli_unregister_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_);
 
@@ -159,6 +162,29 @@ of this function will be called no registered command matches what the
 user entered. The _callback_ for this acts the same as for
 *ccli_register_command()*, where the first word entered will be passed in
 as the _command_.
+
+When the user hits "Ctrl^C", the current default operation is to print
+"^C" and exit. But this can be overriden by *ccli_register_interrupt()*,
+which takes a _callback_ with the following prototype::
+
+[verse]
+--
+   int *interrupt*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_, const char pass:[*]_line_,
+		 int _pos_, void pass:[*]_data_);
+--
+
+When the user hits Ctrl^C, the _callback_ will get called with the following
+parameters:
+
+_ccli_ - will be the _ccli_ descriptor returned by *ccli_alloc()*
+
+_line_ - The full line of what the user had typed.
+
+_pos_  - The current position of the users cursor.
+
+_data_ - The _data_ that was passed in when the _callback_ was registered with
+        *ccli_register_interrupt()*.
+
 
 RETURN VALUE
 ------------
