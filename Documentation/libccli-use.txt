@@ -83,7 +83,7 @@ _command_ - a string that matches the command that the user typed.
 _line_ - The full line that the user typed when they hit "enter".
 
 _data_ - The _data_ that was passed in when the command was registered with
-         *ccli_command_register()*.
+         *ccli_register_command()*.
 
 _argc_ - The number of words that the user typed. If the command had no
 	other parameters but the command itself, then _argc_ will be 1.
@@ -137,7 +137,7 @@ _list_ - A pointer to a string array that should be allocated and filled in
          with the list of possible matches.
 
 _data_ - The _data_ that was passed in when the command was registered with
-        *ccli_command_register()*.
+        *ccli_register_completion()*.
 
 The _completion_ callback is expected to allocate a list of strings (char pass:[**])
 and fill it with allocated strings (char pass:[*]) of what matches. The return of
