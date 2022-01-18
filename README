@@ -205,3 +205,7 @@ Goodbye!
 
 This gives you a command line interface to browse a binary file and walk through
 its contents.
+
+Requirements to build tests:
+
+	* CUnit-devel
