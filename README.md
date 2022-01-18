@@ -1,4 +1,6 @@
-# This is a very simple shell like interface for CLI activities.
+# LIBCCLI
+
+This is a very simple shell like interface for CLI activities.
 
 More will be added to this, but for now, this is the basic
 idea:
