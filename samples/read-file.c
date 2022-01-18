@@ -16,6 +16,8 @@
 #include <sys/stat.h>
 #include "ccli.h"
 
+#define RF_PROMPT "rfile> "
+
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
 static char *argv0;
@@ -526,6 +528,15 @@ static int do_default(struct ccli *ccli, const char *command,
 	return 0;
 }
 
+static int do_interrupt(struct ccli *ccli, const char *line, int pos, void *data)
+{
+	/* Do not exit the loop */
+	ccli_printf(ccli, "^C\n");
+	ccli_line_clear(ccli);
+	ccli_printf(ccli, RF_PROMPT);
+	return 0;
+}
+
 static int do_help(struct ccli *ccli, const char *command,
 		   const char *line, void *data,
 		   int argc, char **argv)
@@ -573,7 +584,7 @@ int main (int argc, char **argv)
 
 	printf("Reading file %s\n", file);
 
-	cli = ccli_alloc("rfile> ", STDIN_FILENO, STDOUT_FILENO);
+	cli = ccli_alloc(RF_PROMPT, STDIN_FILENO, STDOUT_FILENO);
 	if (!cli)
 		pdie("Creating command line interface");
 
@@ -586,6 +597,7 @@ int main (int argc, char **argv)
 	ccli_register_completion(cli, "read", read_completion);
 
 	ccli_register_default(cli, do_default, &rf);
+	ccli_register_interrupt(cli, do_interrupt, NULL);
 
 	ccli_loop(cli);
 	ccli_free(cli);
