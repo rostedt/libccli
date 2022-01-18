@@ -16,7 +16,7 @@ int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
 int *ccli_line_parse*(const char pass:[*]_line_, char pass:[ ***]_argv_);
 void *ccli_argv_free*(char pass:[**]_argv_);
 
-void *ccli_line_reset*(struct ccli pass:[*]_ccli_, bool _prompt_);
+void *ccli_line_reset*(struct ccli pass:[*]_ccli_);
 
 const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int _past_);
 const int *ccli_execute*(struct ccli pass:[*]_ccli_, const char pass:[*]_line_, bool _hist_);
@@ -43,7 +43,7 @@ assigned from the line. It must then be freed with *ccli_argv_free()*.
 The *ccli_line_reset()* will clear the content in the command line.
 This can be useful for the interrupt callback of *ccli_register_interrupt*(3),
 if it needs to clear the line. This does not modify what is displayed
-to the user, but only what is registered on the command prompt internally.
+to the user, but only what is registered on the command internally.
 The application is responsible for changing any of displayed content
 using the *ccli_printf()* function.
 
