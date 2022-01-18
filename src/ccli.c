@@ -33,6 +33,7 @@ struct command {
 struct ccli {
 	struct termios		savein;
 	struct termios		saveout;
+	struct line_buf		*line;
 	int			history_max;
 	int			history_size;
 	int			current_line;
@@ -579,14 +580,18 @@ static int execute(struct ccli *ccli, struct line_buf *line, bool hist)
  */
 int ccli_execute(struct ccli *ccli, const char *line_str, bool hist)
 {
+	struct line_buf *old_line = ccli->line;
 	struct line_buf line;
 	int ret;
 
 	ret = line_init_str(&line, line_str);
 	if (ret < 0)
 		return ret;
+
+	ccli->line = &line;
 	ret = execute(ccli, &line, hist);
 	line_cleanup(&line);
+	ccli->line = old_line;
 	return ret;
 }
 
@@ -784,6 +789,8 @@ int ccli_loop(struct ccli *ccli)
 	if (line_init(&line))
 		return -1;
 
+	ccli->line = &line;
+
 	echo_prompt(ccli);
 
 	while (!ret) {
@@ -877,5 +884,6 @@ int ccli_loop(struct ccli *ccli)
 	}
 
 	line_cleanup(&line);
+	ccli->line = NULL;
 	return 0;
 }
