@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>
 #include <errno.h>
 #include <ctype.h>
 
@@ -23,6 +22,7 @@ struct line_buf {
 };
 
 extern int line_init(struct line_buf *line);
+extern int line_init_str(struct line_buf *line, const char *str);
 extern void line_reset(struct line_buf *line);
 extern void line_cleanup(struct line_buf *line);
 extern int line_insert(struct line_buf *line, char ch);

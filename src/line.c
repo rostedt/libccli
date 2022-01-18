@@ -21,6 +21,35 @@ __hidden int line_init(struct line_buf *line)
 	return 0;
 }
 
+/**
+ * line_init_str - Initialize a line_buf with a given string
+ * @line: The line_buf to initialize
+ * @str: The string to initialize it with.
+ *
+ * Initilize the line with a given string.
+ *
+ * Returns 0 on success and -1 on failure.
+ */
+__hidden int line_init_str(struct line_buf *line, const char *str)
+{
+	int len = strlen(str);
+	/* strlen(str) + 1 + BUFSIZ - 1 */
+	int size = ((len + BUFSIZ) / BUFSIZ) * BUFSIZ;
+
+	memset(line, 0, sizeof(*line));
+	line->line = calloc(1, size);
+	line->size = size;
+	line->len = len;
+	line->pos = len;
+
+	if (!line->line)
+		return -1;
+
+	strcpy(line->line, str);
+
+	return 0;
+}
+
 __hidden void line_reset(struct line_buf *line)
 {
 	memset(line->line, 0, line->size);

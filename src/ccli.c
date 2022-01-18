@@ -449,7 +449,7 @@ const char *ccli_history(struct ccli *ccli, int past)
 	return ccli->history[idx];
 }
 
-static int execute(struct ccli *ccli, struct line_buf *line)
+static int execute(struct ccli *ccli, struct line_buf *line, bool hist)
 {
 	struct command *cmd;
 	char **argv;
@@ -481,8 +481,39 @@ static int execute(struct ccli *ccli, struct line_buf *line)
 
 	free_argv(argc, argv);
 
-	history_add(ccli, line->line);
+	if (hist)
+		history_add(ccli, line->line);
 
+	return ret;
+}
+
+/**
+ * ccli_execute - Execute a command from outside the loop
+ * @ccli: The ccli descriptor
+ * @line_str: The line to execute as if a user typed it.
+ * @hist: Add to history or not?
+ *
+ * Execute a line as if the user typed it from outside the loop.
+ * The application may want to initiate some commands before executing
+ * the loop (like to reply commands from a previous session). This
+ * gives that ability.
+ *
+ * If @hist is true, then the command is added to the history,
+ * otherwise it is not.
+ *
+ * Returns whatever the command being executed would return.
+ *  If a memory allocation happens, -1 is returned and ERRNO is set.
+ */
+int ccli_execute(struct ccli *ccli, const char *line_str, bool hist)
+{
+	struct line_buf line;
+	int ret;
+
+	ret = line_init_str(&line, line_str);
+	if (ret < 0)
+		return ret;
+	ret = execute(ccli, &line, hist);
+	line_cleanup(&line);
 	return ret;
 }
 
@@ -692,7 +723,7 @@ int ccli_loop(struct ccli *ccli)
 		switch (ch) {
 		case '\n':
 			echo(ccli, '\n');
-			ret = execute(ccli, &line);
+			ret = execute(ccli, &line, true);
 			if (ret)
 				break;
 			line_reset(&line);

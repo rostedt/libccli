@@ -3,7 +3,7 @@ libccli(3)
 
 NAME
 ----
-ccli_printf, ccli_parse_line, ccli_argv_free, ccli_history - Commands for libccli callbacks.
+ccli_printf, ccli_parse_line, ccli_argv_free, ccli_history, ccli_execute - Commands for libccli callbacks.
 
 SYNOPSIS
 --------
@@ -13,10 +13,11 @@ SYNOPSIS
 
 int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
 
-int *ccli_parse_line*(const char pass:[*]_line_, char pass:[ ***]argv);
-void *ccli_argv_free*(char pass:[**]argv);
+int *ccli_parse_line*(const char pass:[*]_line_, char pass:[ ***]_argv_);
+void *ccli_argv_free*(char pass:[**]_argv_);
 
-const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int past);
+const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int _past_);
+const int *ccli_execute*(struct ccli pass:[*]_ccli_, const char pass:[*]_line_, bool _hist_);
 --
 
 DESCRIPTION
@@ -43,6 +44,12 @@ _ccli_ descriptor. It will retrieve the command that was entered _past_
 commands ago. This could be useful to replay a command from the default
 callback this is registered by *ccli_register_default(3)*.
 
+To execute lines outside the *ccli_loop*(3), the *ccli_execute()* can be
+called. It will execute _line_ just as if a user typed it and hit "enter".
+Note, the _line_ should not contain a new line ('\n') character, just the
+text before a user would have hit "enter". If _hist_ is true then the command
+entered will be visible in the history, otherwise it will not be.
+
 RETURN VALUE
 ------------
 *ccli_printf()* returns the number of characters written or -1 on error.
@@ -56,6 +63,10 @@ RETURN VALUE
    farther than the history that is stored, then NULL is returned.
    Note that the string that is returned is internal to the _ccli_
    descriptor and should not be modified.
+
+*ccli_execute()* returns what the command would return (the callback from
+   *ccli_register_command*(3) or -1 with ERRNO set on internal error
+   (failure to allocate memory).
 
 ERRORS
 ------
@@ -116,6 +127,22 @@ static int do_default(struct ccli *ccli, const char *cmd, const char *line,
 	return 0;
 }
 
+static int show_banner(struct ccli *ccli, const char *cmd, const char *line,
+		       void *data, int argc, char **argv)
+{
+	/* Demonstrate a callback before the ccli_loop() */
+	int i;
+
+	for (i = 1; i < argc; i++) {
+		if (i > 1)
+			ccli_printf(ccli, " ");
+		ccli_printf(ccli, "%s", argv[i]);
+	}
+	ccli_printf(ccli, "\n");
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	long counter = 0;
@@ -125,9 +152,11 @@ int main(int argc, char **argv)
 	ccli = ccli_alloc("myprompt> ", STDIN_FILENO, STDOUT_FILENO);
 
 	ccli_register_command(ccli, "reset", reset_counter, (void *)&counter);
+	ccli_register_command(ccli, "banner", show_banner, NULL);
 
 	ccli_register_default(ccli, do_default, (void *)&counter);
 
+	ccli_execute(ccli, "banner Show a running counter", false);
 	ccli_loop(ccli);
 
 	ccli_free(ccli);

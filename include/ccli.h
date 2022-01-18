@@ -7,6 +7,8 @@
  * Copyright (C) 2022 Steven Rostedt <rostedt@goodmis.org>
  */
 
+#include <stdbool.h>
+
 struct ccli;
 
 typedef int (*ccli_command_callback)(struct ccli *ccli, const char *command,
@@ -41,5 +43,7 @@ int ccli_line_parse(const char *line, char ***argv);
 void ccli_argv_free(char **argv);
 
 const char *ccli_history(struct ccli *ccli, int past);
+
+int ccli_execute(struct ccli *ccli, const char *line, bool hist);
 
 #endif
