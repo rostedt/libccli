@@ -208,4 +208,6 @@ its contents.
 
 Requirements to build tests:
 
-	* CUnit-devel
+	* CUnit-devel (CentOS)
+	* libcunit1-dev (Ubuntu/Debian)
+	* cunit-devel (OpenSUSE)
