@@ -21,7 +21,8 @@
 #define dprint(x...)
 #endif
 
-#define DEFAULT_HISTORY_MAX 256
+#define DEFAULT_HISTORY_MAX	256
+#define DEFAULT_PAGE_SCROLL	24
 
 struct command {
 	char			*cmd;
@@ -109,30 +110,42 @@ static int history_add(struct ccli *ccli, char *line)
 	return 0;
 }
 
-static int history_up(struct ccli *ccli, struct line_buf *line)
+static int history_up(struct ccli *ccli, struct line_buf *line, int cnt)
 {
+	int current = ccli->current_line;
 	int idx;
 
-	if (!ccli->current_line ||
-	    (ccli->history_size > ccli->history_max &&
-	     ccli->current_line <= ccli->history_size - ccli->history_max))
-		return 0;
+	if (ccli->current_line > cnt)
+		ccli->current_line -= cnt;
+	else
+		ccli->current_line = 0;
 
-	ccli->current_line--;
+	if (ccli->history_size > ccli->history_max &&
+	    ccli->current_line <= ccli->history_size - ccli->history_max)
+		ccli->current_line = (ccli->history_size - ccli->history_max) + 1;
+
+	if (current == ccli->current_line)
+		return 1;
+
 	idx = ccli->current_line % ccli->history_max;
 	clear_line(ccli, line);
 	line_replace(line, ccli->history[idx]);
 	return 0;
 }
 
-static int history_down(struct ccli *ccli, struct line_buf *line)
+static int history_down(struct ccli *ccli, struct line_buf *line, int cnt)
 {
+	int current = ccli->current_line;
 	int idx;
 
-	if (ccli->current_line >= (ccli->history_size - 1))
-		return 0;
+	ccli->current_line += cnt;
 
-	ccli->current_line++;
+	if (ccli->current_line > (ccli->history_size - 1))
+		ccli->current_line = ccli->history_size - 1;
+
+	if (current == ccli->current_line)
+		return 1;
+
 	idx = ccli->current_line % ccli->history_max;
 	clear_line(ccli, line);
 	line_replace(line, ccli->history[idx]);
@@ -905,11 +918,11 @@ int ccli_loop(struct ccli *ccli)
 				bracket = false;
 				switch (ch) {
 				case 'A':
-					history_up(ccli, &line);
+					history_up(ccli, &line, 1);
 					refresh(ccli, &line);
 					break;
 				case 'B':
-					history_down(ccli, &line);
+					history_down(ccli, &line, 1);
 					refresh(ccli, &line);
 					break;
 				case 'C':
@@ -921,13 +934,11 @@ int ccli_loop(struct ccli *ccli)
 					refresh(ccli, &line);
 					break;
 				case '1':
-					num = 1;
-					break;
 				case '3':
-					num = 3;
-					break;
 				case '4':
-					num = 4;
+				case '5':
+				case '6':
+					num = ch - '0';
 					break;
 				default:
 					dprint("unknown bracket %c (%d)\n", ch, ch);
@@ -953,6 +964,14 @@ int ccli_loop(struct ccli *ccli)
 					break;
 				case 4:
 					line_end(&line);
+					refresh(ccli, &line);
+					break;
+				case 5:
+					history_up(ccli, &line, DEFAULT_PAGE_SCROLL);
+					refresh(ccli, &line);
+					break;
+				case 6:
+					history_down(ccli, &line, DEFAULT_PAGE_SCROLL);
 					refresh(ccli, &line);
 					break;
 				default:
