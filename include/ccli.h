@@ -49,6 +49,8 @@ int ccli_unregister_command(struct ccli *ccli, const char *command);
 int ccli_line_parse(const char *line, char ***argv);
 void ccli_argv_free(char **argv);
 
+void ccli_line_clear(struct ccli *ccli);
+
 const char *ccli_history(struct ccli *ccli, int past);
 
 int ccli_execute(struct ccli *ccli, const char *line, bool hist);

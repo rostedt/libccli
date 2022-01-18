@@ -3,7 +3,7 @@ libccli(3)
 
 NAME
 ----
-ccli_printf, ccli_parse_line, ccli_argv_free, ccli_history, ccli_execute - Commands for libccli callbacks.
+ccli_printf, ccli_line_parse, ccli_line_reset, ccli_argv_free, ccli_history, ccli_execute - Commands for libccli callbacks.
 
 SYNOPSIS
 --------
@@ -13,8 +13,10 @@ SYNOPSIS
 
 int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
 
-int *ccli_parse_line*(const char pass:[*]_line_, char pass:[ ***]_argv_);
+int *ccli_line_parse*(const char pass:[*]_line_, char pass:[ ***]_argv_);
 void *ccli_argv_free*(char pass:[**]_argv_);
+
+void *ccli_line_reset*(struct ccli pass:[*]_ccli_, bool _prompt_);
 
 const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int _past_);
 const int *ccli_execute*(struct ccli pass:[*]_ccli_, const char pass:[*]_line_, bool _hist_);
@@ -37,6 +39,13 @@ be handy for the _completion_ callback if it needs access to the
 words in the _line_ before the cursor. An address of a string array
 is passed to _argv_ and that will be allocated and the strings will be
 assigned from the line. It must then be freed with *ccli_argv_free()*.
+
+The *ccli_line_reset()* will clear the content in the command line.
+This can be useful for the interrupt callback of *ccli_register_interrupt*(3),
+if it needs to clear the line. This does not modify what is displayed
+to the user, but only what is registered on the command prompt internally.
+The application is responsible for changing any of displayed content
+using the *ccli_printf()* function.
 
 The history of previous commands that were entered could be retrieved
 via *ccli_history()* to get the pervious commands entered into the

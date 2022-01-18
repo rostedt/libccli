@@ -523,6 +523,14 @@ const char *ccli_history(struct ccli *ccli, int past)
 	return ccli->history[idx];
 }
 
+void ccli_line_clear(struct ccli *ccli)
+{
+	if (!ccli || !ccli->line)
+		return;
+
+	line_reset(ccli->line);
+}
+
 static int execute(struct ccli *ccli, struct line_buf *line, bool hist)
 {
 	struct command *cmd;

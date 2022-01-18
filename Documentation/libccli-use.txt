@@ -320,8 +320,25 @@ static int say_goodbye(struct ccli *ccli, const char *command,
 		       const char *line, void *data,
 		       int argc, char **argv)
 {
-	ccli_printf("Goodbye!\n");
+	ccli_printf(ccli, "Goodbye!\n");
 	return 1;
+}
+
+static int do_interrupt(struct ccli *ccli, const char *line, int pos,
+	void *data)
+{
+	char *what = data;
+
+	if (pos < strlen(line)) {
+		ccli_printf(ccli, ">%s<%s\n", what, line + pos);
+		ccli_printf(ccli, "myprompt> %s", line);
+		while (pos++ < strlen(line))
+			ccli_printf(ccli, "\b");
+	} else {
+		ccli_line_clear(ccli);
+		ccli_printf(ccli, "\n%s!!!> %s", what, line);
+	}
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -338,6 +355,7 @@ int main(int argc, char **argv)
 	/* We only use 'goodbye' to exit */
 	ccli_unregister_command(ccli, "exit");
 	ccli_register_command(ccli, "goodbye", say_goodbye, NULL);
+	ccli_register_interrupt(ccli, do_interrupt, "OUCH!");
 
 	ccli_loop(ccli);
 
@@ -345,7 +363,6 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
 --
 FILES
 -----
