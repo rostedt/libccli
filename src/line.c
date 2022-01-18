@@ -99,6 +99,16 @@ __hidden void line_left(struct line_buf *line)
 		line->pos--;
 }
 
+__hidden void line_home(struct line_buf *line)
+{
+	line->pos = 0;
+}
+
+__hidden void line_end(struct line_buf *line)
+{
+	line->pos = line->len;
+}
+
 __hidden void line_backspace(struct line_buf *line)
 {
 	int len;

@@ -847,9 +847,9 @@ int ccli_loop(struct ccli *ccli)
 {
 	struct line_buf line;
 	bool bracket = false;
-	bool three = false;
 	bool esc = false;
 	unsigned char ch;
+	int num = 0;
 	int ret = 0;
 	int tab = 0;
 	int r;
@@ -920,8 +920,14 @@ int ccli_loop(struct ccli *ccli)
 					line_left(&line);
 					refresh(ccli, &line);
 					break;
+				case '1':
+					num = 1;
+					break;
 				case '3':
-					three = true;
+					num = 3;
+					break;
+				case '4':
+					num = 4;
 					break;
 				default:
 					dprint("unknown bracket %c (%d)\n", ch, ch);
@@ -929,19 +935,33 @@ int ccli_loop(struct ccli *ccli)
 				}
 				break;
 			}
-			if (three) {
-				three = false;
-				switch (ch) {
-				case '~':
+
+			if (num) {
+				if (ch != '~') {
+					dprint("unknown num=%d %c (%d)\n", num, ch, ch);
+					num = 0;
+					break;
+				}
+				switch (num) {
+				case 1:
+					line_home(&line);
+					refresh(ccli, &line);
+					break;
+				case 3:
 					line_del(&line);
 					refresh(ccli, &line);
 					break;
+				case 4:
+					line_end(&line);
+					refresh(ccli, &line);
+					break;
 				default:
-					dprint("unknown 'three' %c (%d)\n", ch, ch);
 					break;
 				}
+				num = 0;
 				break;
 			}
+
 			if (isprint(ch)) {
 				line_insert(&line, ch);
 				refresh(ccli, &line);
