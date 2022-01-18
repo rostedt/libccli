@@ -1,8 +1,9 @@
-This is a very simple shell like interface for CLI activities.
+# This is a very simple shell like interface for CLI activities.
 
 More will be added to this, but for now, this is the basic
 idea:
 
+```
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -119,23 +120,29 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+```
 
-To build:
+## To build:
 
+```
   make
+```
+## To build the sample file(s)
 
-To build the sample file(s)
-
+```
   make samples
+```
 
 The samples will be placed in a local bin directory. One that you may find
 useful is the read-file sample.
 
+```
  bin/read-file binary-file
+```
 
 This will give you a command line interface that can read the binary file:
 
-
+```
 -----------------------------------------------------------------------------
  $ bin/read-file trace.dat
 Reading file /tmp/trace.dat
@@ -202,11 +209,12 @@ rfile> help
 rfile> quit
 Goodbye!
 -----------------------------------------------------------------------------
+```
 
 This gives you a command line interface to browse a binary file and walk through
 its contents.
 
-Requirements to build tests:
+## Requirements to build tests:
 
 	* CUnit-devel (CentOS)
 	* libcunit1-dev (Ubuntu/Debian)
