@@ -5,7 +5,7 @@ This is a very simple shell like interface for CLI activities.
 More will be added to this, but for now, this is the basic
 idea:
 
-```
+```C
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -126,19 +126,19 @@ int main(int argc, char **argv)
 
 ## To build:
 
-```
+```sh
   make
 ```
 ## To build the sample file(s)
 
-```
+```sh
   make samples
 ```
 
 The samples will be placed in a local bin directory. One that you may find
 useful is the read-file sample.
 
-```
+```sh
  bin/read-file binary-file
 ```
 
