@@ -24,6 +24,21 @@
 #define DEFAULT_HISTORY_MAX	256
 #define DEFAULT_PAGE_SCROLL	24
 
+enum {
+	CHAR_ERROR		= -1,
+	CHAR_BACKSPACE		= -2,
+	CHAR_DEL		= -3,
+	CHAR_INTR		= -4,
+	CHAR_UP			= -5,
+	CHAR_DOWN		= -6,
+	CHAR_RIGHT		= -7,
+	CHAR_LEFT		= -8,
+	CHAR_HOME		= -9,
+	CHAR_END		= -10,
+	CHAR_PAGEUP		= -11,
+	CHAR_PAGEDOWN		= -12,
+};
+
 struct command {
 	char			*cmd;
 	ccli_command_callback	callback;
@@ -88,6 +103,92 @@ static void clear_line(struct ccli *ccli, struct line_buf *line)
 
 	for (i = 0; i < len; i++)
 		echo(ccli, ' ');
+}
+
+static int read_char(struct ccli *ccli)
+{
+	bool bracket = false;
+	bool esc = false;
+	unsigned char ch;
+	int num = 0;
+	int r;
+
+	for (;;) {
+		r = read(ccli->in, &ch, 1);
+		if (r <= 0)
+			return CHAR_ERROR;
+
+		switch (ch) {
+		case 3: /* ETX */
+			return CHAR_INTR;
+		case 27: /* ESC */
+			esc = true;
+			break;
+		case 127: /* DEL */
+			return CHAR_BACKSPACE;
+		default:
+			if (esc) {
+				esc = false;
+				if (ch != '[') {
+					dprint("unknown esc char %c (%d)\n", ch, ch);
+					break;
+				}
+				bracket = true;
+				break;
+			}
+			if (bracket) {
+				bracket = false;
+				switch (ch) {
+				case 'A':
+					return CHAR_UP;
+				case 'B':
+					return CHAR_DOWN;
+				case 'C':
+					return CHAR_RIGHT;
+				case 'D':
+					return CHAR_LEFT;
+				case '1':
+				case '3':
+				case '4':
+				case '5':
+				case '6':
+					num = ch - '0';
+					break;
+				default:
+					dprint("unknown bracket %c (%d)\n", ch, ch);
+					break;
+				}
+			}
+			if (num) {
+				if (ch != '~') {
+					dprint("unknown num=%d %c (%d)\n", num, ch, ch);
+					num = 0;
+					break;
+				}
+				switch (num) {
+				case 1:
+					return CHAR_HOME;
+				case 3:
+					return CHAR_DEL;
+				case 4:
+					return CHAR_END;
+				case 5:
+					return CHAR_PAGEUP;
+				case 6:
+					return CHAR_PAGEDOWN;
+				default:
+					break;
+				}
+				num = 0;
+				break;
+			}
+			if (isprint(ch) || isspace(ch))
+				return ch;
+
+			dprint("unknown char '%d'\n", ch);
+			return ch;
+		}
+	}
 }
 
 static int history_add(struct ccli *ccli, char *line)
@@ -903,13 +1004,9 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 int ccli_loop(struct ccli *ccli)
 {
 	struct line_buf line;
-	bool bracket = false;
-	bool esc = false;
-	unsigned char ch;
-	int num = 0;
-	int ret = 0;
+	char ch;
 	int tab = 0;
-	int r;
+	int ret = 0;
 
 	if (line_init(&line))
 		return -1;
@@ -919,8 +1016,8 @@ int ccli_loop(struct ccli *ccli)
 	echo_prompt(ccli);
 
 	while (!ret) {
-		r = read(ccli->in, &ch, 1);
-		if (r <= 0)
+		ch = read_char(ccli);
+		if (ch == CHAR_ERROR)
 			break;
 
 		if (ch != '\t')
@@ -937,94 +1034,52 @@ int ccli_loop(struct ccli *ccli)
 		case '\t':
 			do_completion(ccli, &line, tab++);
 			break;
-		case 3: /* ETX */
+		case CHAR_INTR:
 			ret = ccli->interrupt(ccli, line.line,
 					      line.pos, ccli->interrupt_data);
 			break;
-		case 27: /* ESC */
-			esc = true;
-			break;
-		case 127: /* DEL */
+		case CHAR_BACKSPACE:
 			line_backspace(&line);
 			refresh(ccli, &line);
 			break;
+		case CHAR_DEL:
+			line_del(&line);
+			refresh(ccli, &line);
+			break;
+		case CHAR_UP:
+			history_up(ccli, &line, 1);
+			refresh(ccli, &line);
+			break;
+		case CHAR_DOWN:
+			history_down(ccli, &line, 1);
+			refresh(ccli, &line);
+			break;
+		case CHAR_LEFT:
+			line_left(&line);
+			refresh(ccli, &line);
+			break;
+		case CHAR_RIGHT:
+			line_right(&line);
+			refresh(ccli, &line);
+			break;
+		case CHAR_HOME:
+			line_home(&line);
+			refresh(ccli, &line);
+			break;
+		case CHAR_END:
+			line_end(&line);
+			refresh(ccli, &line);
+			break;
+		case CHAR_PAGEUP:
+			history_up(ccli, &line, DEFAULT_PAGE_SCROLL);
+			refresh(ccli, &line);
+			break;
+		case CHAR_PAGEDOWN:
+			history_down(ccli, &line, DEFAULT_PAGE_SCROLL);
+			refresh(ccli, &line);
+			break;
+
 		default:
-			if (esc) {
-				esc = false;
-				if (ch != '[') {
-					dprint("unknown esc char %c (%d)\n", ch, ch);
-					break;
-				}
-				bracket = true;
-				break;
-			}
-			if (bracket) {
-				bracket = false;
-				switch (ch) {
-				case 'A':
-					history_up(ccli, &line, 1);
-					refresh(ccli, &line);
-					break;
-				case 'B':
-					history_down(ccli, &line, 1);
-					refresh(ccli, &line);
-					break;
-				case 'C':
-					line_right(&line);
-					refresh(ccli, &line);
-					break;
-				case 'D':
-					line_left(&line);
-					refresh(ccli, &line);
-					break;
-				case '1':
-				case '3':
-				case '4':
-				case '5':
-				case '6':
-					num = ch - '0';
-					break;
-				default:
-					dprint("unknown bracket %c (%d)\n", ch, ch);
-					break;
-				}
-				break;
-			}
-
-			if (num) {
-				if (ch != '~') {
-					dprint("unknown num=%d %c (%d)\n", num, ch, ch);
-					num = 0;
-					break;
-				}
-				switch (num) {
-				case 1:
-					line_home(&line);
-					refresh(ccli, &line);
-					break;
-				case 3:
-					line_del(&line);
-					refresh(ccli, &line);
-					break;
-				case 4:
-					line_end(&line);
-					refresh(ccli, &line);
-					break;
-				case 5:
-					history_up(ccli, &line, DEFAULT_PAGE_SCROLL);
-					refresh(ccli, &line);
-					break;
-				case 6:
-					history_down(ccli, &line, DEFAULT_PAGE_SCROLL);
-					refresh(ccli, &line);
-					break;
-				default:
-					break;
-				}
-				num = 0;
-				break;
-			}
-
 			if (isprint(ch)) {
 				line_insert(&line, ch);
 				refresh(ccli, &line);
