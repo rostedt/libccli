@@ -162,10 +162,10 @@ static int history_down(struct ccli *ccli, struct line_buf *line, int cnt)
 
 	ccli->current_line += cnt;
 
-	if (ccli->current_line > (ccli->history_size - 1))
-		ccli->current_line = ccli->history_size - 1;
+	if (ccli->current_line > (ccli->history_size))
+		ccli->current_line = ccli->history_size;
 
-	if (current == ccli->current_line) {
+	if (ccli->current_line == ccli->history_size) {
 		/* Restore the command that was before moving in history */
 		if (ccli->temp_line) {
 			clear_line(ccli, line);
