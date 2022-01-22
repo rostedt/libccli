@@ -123,6 +123,31 @@ __hidden void line_backspace(struct line_buf *line)
 	line->line[line->len] = '\0';
 }
 
+__hidden int line_del_word(struct line_buf *line)
+{
+	int len;
+	int s = line->pos;
+
+	if (!line->pos)
+		return 0;
+
+	while (line->pos-- && isspace(line->line[line->pos]))
+		;
+
+	while (line->pos && !isspace(line->line[line->pos]))
+		line->pos--;
+
+	if (isspace(line->line[line->pos]))
+		line->pos++;
+
+	len = line->len - s;
+	line->len -= s - line->pos;
+	memmove(line->line + line->pos, line->line + s - 1, len);
+	memset(line->line + line->len, 0, s - line->pos);
+
+	return s - line->pos;
+}
+
 __hidden void line_del(struct line_buf *line)
 {
 	int len;
