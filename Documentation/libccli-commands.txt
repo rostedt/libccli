@@ -3,7 +3,7 @@ libccli(3)
 
 NAME
 ----
-ccli_printf, ccli_line_parse, ccli_line_reset, ccli_line_inject, ccli_line_refresh,
+ccli_line_parse, ccli_line_reset, ccli_line_inject, ccli_line_refresh,
 ccli_argv_free, ccli_history, ccli_execute - Commands for libccli callbacks.
 
 SYNOPSIS
@@ -11,8 +11,6 @@ SYNOPSIS
 [verse]
 --
 *#include <ccli.h>*
-
-int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
 
 int *ccli_line_parse*(const char pass:[*]_line_, char pass:[ ***]_argv_);
 void *ccli_argv_free*(char pass:[**]_argv_);
@@ -32,10 +30,6 @@ After a descriptor is created from *ccli_alloc(3)* and a command is registered
 with *ccli_register_command(3)* or one of the similar functions, these are
 the functions that can be useful in the callback.
 
-If a callback needs to write to the output file descriptor passed in as _out_ to
-*ccli_alloc()*, it can use *ccli_printf()*. It has the same format as normal
-*printf(3)* but the first parameter is the _ccfi_ descriptor passed to *ccli_alloc()*.
-
 The *ccli_line_parse()* is a helper function to parse the line like the
 command line would parse it and send it to the _callback_. This could
 be handy for the _completion_ callback if it needs access to the
@@ -48,7 +42,7 @@ This can be useful for the interrupt callback of *ccli_register_interrupt*(3),
 if it needs to clear the line. This does not modify what is displayed
 to the user, but only what is registered on the command internally.
 The application is responsible for changing any of displayed content
-using the *ccli_printf()* function.
+using the *ccli_printf*(3) function.
 
 The *ccli_line_inject*() will insert _string_ into the command line
 saved internally, at _pos_. If _pos_ is negative, then it will insert
@@ -74,8 +68,6 @@ entered will be visible in the history, otherwise it will not be.
 
 RETURN VALUE
 ------------
-*ccli_printf()* returns the number of characters written or -1 on error.
-
 *ccli_line_parse()* returns the number of words parsed in the line
    and allocated in _argv_, or -1 on error. Note, the value returned
    is 1 or more, then _argv_ must be freed with *ccli_argv_free()*.
@@ -221,6 +213,7 @@ SEE ALSO
 *ccli_register_default*(3),
 *ccli_register_unknown*(3),
 *ccli_loop*(3)
+*ccli_printf*(3)
 
 AUTHOR
 ------
