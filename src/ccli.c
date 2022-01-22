@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/ioctl.h>
 #include <dirent.h>
 
 #include "ccli-local.h"
@@ -54,6 +55,7 @@ struct ccli {
 	int			history_max;
 	int			history_size;
 	int			current_line;
+	bool			in_tty;
 	int			in;
 	int			out;
 	int			nr_commands;
@@ -80,6 +82,11 @@ static void echo(struct ccli *ccli, char ch)
 static void echo_str(struct ccli *ccli, char *str)
 {
 	write(ccli->out, str, strlen(str));
+}
+
+static void echo_str_len(struct ccli *ccli, char *str, int len)
+{
+	write(ccli->out, str, len);
 }
 
 static void echo_prompt(struct ccli *ccli)
@@ -393,6 +400,7 @@ struct ccli *ccli_alloc(const char *prompt, int in, int out)
 
 	ccli->in = in;
 	ccli->out = out;
+	ccli->in_tty = isatty(in);
 
 	ccli->history_max = DEFAULT_HISTORY_MAX;
 
@@ -886,6 +894,82 @@ static void insert_word(struct ccli *ccli, struct line_buf *line,
 	refresh(ccli, line);
 }
 
+static void print_completion_flat(struct ccli *ccli, const char *match,
+				  int len, int nr_str, char **strings)
+{
+	int i;
+
+	for (i = 0; i < nr_str; i++) {
+		if (strncmp(match, strings[i], len) == 0) {
+			echo_str(ccli, strings[i]);
+			echo(ccli, '\n');
+		}
+	}
+}
+
+static void print_completion(struct ccli *ccli, const char *match,
+			     int len, int nr_str, char **strings)
+{
+	struct winsize w;
+	char *spaces;
+	char *str;
+	int max_len = 0;
+	int cols, rows;
+	int i, x;
+	int ret;
+
+	if (!ccli->in_tty)
+		return print_completion_flat(ccli, match, len,
+					     nr_str, strings);
+
+	ret = ioctl(ccli->in, TIOCGWINSZ, &w);
+	if (ret)
+		return print_completion_flat(ccli, match, len,
+					     nr_str, strings);
+	cols = w.ws_col;
+
+	for (i = 0, x = 0; i < nr_str; i++) {
+		if (strncmp(match, strings[i], len) == 0) {
+			if (strlen(strings[i]) > max_len)
+				max_len = strlen(strings[i]);
+			if (i != x) {
+				/* Keep all matches at the front */
+				str = strings[x];
+				strings[x] = strings[i];
+				strings[i] = str;
+			}
+			x++;
+		}
+	}
+	if (!max_len)
+		return;
+
+	spaces = malloc(max_len);
+	memset(spaces, ' ', max_len);
+
+	nr_str = x;
+
+	cols = cols / (max_len + 2);
+	if (!cols)
+		cols = 1;
+
+	rows = (nr_str + cols - 1) / cols;
+
+	for (i = 0; i < rows; i++) {
+		for (x = 0; x < cols; x++) {
+			if (x * rows + i >= nr_str)
+				continue;
+			if (x)
+				echo_str(ccli, "  ");
+			str = strings[x * rows + i];
+			echo_str(ccli, str);
+			if (strlen(str) < max_len)
+				echo_str_len(ccli, spaces, max_len - strlen(str));
+		}
+		echo(ccli, '\n');
+	}
+}
+
 static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 {
 	struct command *cmd;
@@ -946,17 +1030,7 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		} else if (tab && matched > 1) {
 			echo(ccli, '\n');
 
-			for (i = 0; i < cnt; i++) {
-				/* If list[i] failed to allocate, we need to handle that */
-				if (!list[i])
-					continue;
-				if (!mlen || strncmp(list[i], match, mlen) == 0) {
-					if (i)
-						echo(ccli, ' ');
-					echo_str(ccli, list[i]);
-				}
-			}
-			echo(ccli, '\n');
+			print_completion(ccli, match, mlen, cnt, list);
 			refresh(ccli, line);
 		}
 
@@ -973,6 +1047,7 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 {
 	struct command *command;
+	char **commands;
 	int len;
 	int i = line->pos - 1;
 	int s, m = 0;
@@ -1019,16 +1094,18 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	echo(ccli, '\n');
 
-	for (i = 0; i < ccli->nr_commands; i++) {
-		command = &ccli->commands[i];
-		if (!len || strncmp(line->line + s, command->cmd, len) == 0) {
-			if (i)
-				echo(ccli, ' ');
-			echo_str(ccli, command->cmd);
-		}
-	}
-	echo(ccli, '\n');
+	commands = calloc(ccli->nr_commands, sizeof(char *));
+	if (!commands)
+		return;
+
+	for (i = 0; i < ccli->nr_commands; i++)
+		commands[i] = strdup(ccli->commands[i].cmd);
+
+	print_completion(ccli, line->line + s, len,
+			  ccli->nr_commands, commands);
+
 	refresh(ccli, line);
+	free_argv(ccli->nr_commands, commands);
 }
 
 /**
