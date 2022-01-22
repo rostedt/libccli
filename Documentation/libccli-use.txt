@@ -20,7 +20,7 @@ int *ccli_register_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_comm
 			  void pass:[*]_data_);
 int *ccli_register_completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
 			  int (pass:[*]_completion_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
-						   int, const char pass:[*], char pass:[***], void pass:[*]));
+						   int, char pass:[*], char pass:[***], void pass:[*]));
 
 int *ccli_unregister_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_);
 
@@ -104,7 +104,7 @@ The _completion_ function has the following prototype:
 [verse]
 --
    int *completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_, const char pass:[*]_line_,
-		 int _word_, const char pass:[*]_match_, char pass:[***]_list_, void pass:[*]_data_);
+		 int _word_, char pass:[*]_match_, char pass:[***]_list_, void pass:[*]_data_);
 --
 
 When the user hits "tab" for a command that has a completion registered to it,
@@ -120,7 +120,7 @@ _word_ - The index of the word being matched (zero being the command itself, and
 	the first parameter would be one).
 
 _match_ - The word that is currently being completed (empty if the cursor is
-         on a space).
+         on a space). May be modified to show what to append on match.
 
 _list_ - A pointer to a string array that should be allocated and filled in
          with the list of possible matches.
@@ -134,6 +134,12 @@ _completion_ is the number of allocated words in the _list_. If zero or negative
 is returned, then *list should not be allocated, and any allocation done by _completion_
 should be cleaned up before the return. See EXAMPLE for an example of handling
 completions for a specific command.
+
+By default, on a single match, the word that matches will be added plus a single
+space behind it. To change this behavior, and add something other than a space
+(for example a '/'), the _match_ parameter can have its ending nul '\0' character
+replaced with the character to append. If it is replaced with CCLI_NOSPACE, then
+nothing will be appended to the matched word.
 
 RETURN VALUE
 ------------
@@ -197,7 +203,7 @@ static int say_hello(struct ccli *ccli, const char *command,
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
 static int hello_completion(struct ccli *ccli, const char *command,
-			    const char *line, int word, const char *match,
+			    const char *line, int word, char *match,
 			    char ***list, void *data)
 {
 	const char *word1[] = {
@@ -221,6 +227,8 @@ static int hello_completion(struct ccli *ccli, const char *command,
 	case 2:
 		words = word2;
 		len = ARRAY_SIZE(word2);
+		/* Add a comma */
+		match[strlen(match)] = ',';
 		break;
 	case 3:
 		words = word3;

@@ -884,13 +884,14 @@ void ccli_line_refresh(struct ccli *ccli)
 }
 
 static void insert_word(struct ccli *ccli, struct line_buf *line,
-			const char *word, int len)
+			const char *word, int len, char delim)
 {
 	int i;
 
 	for (i = 0; i < len; i++)
 		line_insert(line, word[i]);
-	line_insert(line, ' ');
+	if (delim != CCLI_NOSPACE)
+		line_insert(line, delim);
 	refresh(ccli, line);
 }
 
@@ -975,8 +976,10 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	struct command *cmd;
 	struct line_buf copy;
 	char **list = NULL;
+	char empty[1] = "";
 	char **argv;
 	char *match;
+	char delim;
 	int matched = 0;
 	int word;
 	int argc;
@@ -999,18 +1002,23 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	/* If the cursor is on a space, there's no word to match */
 	if (ISSPACE(copy.line[copy.pos - 1])) {
-		match = "";
+		match = empty;
 		word++;
 	} else {
 		match = argv[word];
 	}
+
+	mlen = strlen(match);
 
 	cmd = find_command(ccli, argv[0]);
 	if (cmd && cmd->completion)
 		cnt = cmd->completion(ccli, cmd->cmd, copy.line, word,
 				      match, &list, cmd->data);
 
-	mlen = strlen(match);
+	delim = match[mlen];
+	match[mlen] = '\0';
+	if (!delim)
+		delim = ' ';
 
 	if (cnt) {
 		for (i = 0; i < cnt; i++) {
@@ -1025,7 +1033,7 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 		if (matched == 1) {
 			len = strlen(list[m]);
-			insert_word(ccli, line, list[m] + mlen, len - mlen);
+			insert_word(ccli, line, list[m] + mlen, len - mlen, delim);
 
 		} else if (tab && matched > 1) {
 			echo(ccli, '\n');
@@ -1084,7 +1092,7 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		/* select it */
 		command = &ccli->commands[match];
 		m = strlen(command->cmd);
-		insert_word(ccli, line, command->cmd + len, m - len);
+		insert_word(ccli, line, command->cmd + len, m - len, ' ');
 		return;
 	}
 

@@ -9,6 +9,8 @@
 
 #include <stdbool.h>
 
+#define CCLI_NOSPACE	1
+
 struct ccli;
 
 typedef int (*ccli_command_callback)(struct ccli *ccli, const char *command,
@@ -16,7 +18,7 @@ typedef int (*ccli_command_callback)(struct ccli *ccli, const char *command,
 				     int argc, char **argv);
 
 typedef int (*ccli_completion)(struct ccli *ccli, const char *command,
-			       const char *line, int word, const char *match,
+			       const char *line, int word, char *match,
 			       char ***list, void *data);
 
 typedef int (*ccli_interrupt)(struct ccli *ccli, const char *line,

@@ -327,7 +327,7 @@ enum {
 };
 
 static int read_completion(struct ccli *ccli, const char *command,
-			   const char *line, int word, const char *match,
+			   const char *line, int word, char *match,
 			   char ***list, void *data)
 {
 	char *cmds[] = { "1", "2", "4", "8",
