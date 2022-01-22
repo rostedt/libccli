@@ -110,6 +110,7 @@ SEE ALSO
 *ccli_unregister_command*(3),
 *ccli_loop*(3),
 *ccli_printf*(3),
+*ccli_getchar*(3)
 *ccli_line_parse*(3),
 *ccli_line_reset*(3),
 *ccli_line_inject*(3),

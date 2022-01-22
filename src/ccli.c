@@ -191,6 +191,46 @@ static int read_char(struct ccli *ccli)
 	}
 }
 
+/**
+ * ccli_getchar - read a character from ccli stdin
+ * @ccli: The command line descriptor to read from
+ *
+ * Reads a character from ccli->in. Note, it will only return printable
+ * characters, -1 on error or EOF and zero on Ctrl^C.
+ *
+ * Returns the printable input from the user or 0 on Ctrl^C or -1
+ *   on error or EOL.
+ */
+int ccli_getchar(struct ccli *ccli)
+{
+	int r;
+
+	for (;;) {
+		r = read_char(ccli);
+		switch (r) {
+		case CHAR_INTR:
+			return 0;
+		case CHAR_BACKSPACE:
+		case CHAR_DEL:
+		case CHAR_UP:
+		case CHAR_DOWN:
+		case CHAR_RIGHT:
+		case CHAR_LEFT:
+		case CHAR_HOME:
+		case CHAR_END:
+		case CHAR_PAGEUP:
+		case CHAR_PAGEDOWN:
+			continue;
+		default:
+			if (r < 0)
+				return -1;
+		}
+		break;
+	}
+
+	return r;
+}
+
 static int history_add(struct ccli *ccli, char *line)
 {
 	char **lines;

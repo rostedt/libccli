@@ -56,6 +56,8 @@ void ccli_line_refresh(struct ccli *ccli);
 
 const char *ccli_history(struct ccli *ccli, int past);
 
+int ccli_getchar(struct ccli *ccli);
+
 int ccli_execute(struct ccli *ccli, const char *line, bool hist);
 
 #endif

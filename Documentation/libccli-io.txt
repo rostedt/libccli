@@ -3,7 +3,7 @@ libccli(3)
 
 NAME
 ----
-ccli_printf - Commands for I/O to the ccli descriptor.
+ccli_printf, ccli_getchar - Commands for I/O to the ccli descriptor.
 
 SYNOPSIS
 --------
@@ -12,6 +12,7 @@ SYNOPSIS
 *#include <ccli.h>*
 
 int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
+int ccli_getchar(struct ccli pass:[*]_ccli_);
 --
 
 DESCRIPTION
@@ -25,9 +26,18 @@ If a callback needs to write to the output file descriptor passed in as _out_ to
 *ccli_alloc()*, it can use *ccli_printf()*. It has the same format as normal
 *printf(3)* but the first parameter is the _ccfi_ descriptor passed to *ccli_alloc()*.
 
+There may be case to need to read from the input defined by *ccli_alloc*(3).
+For example, to implement a pager for output may want a character
+from the user to continue.
+
 RETURN VALUE
 ------------
 *ccli_printf()* returns the number of characters written or -1 on error.
+
+*ccli_getchar()* returns the character that was inputed. It will not
+return non printable characters and white space. It will return
+0 on Ctrl^C, and -1 on EOF or error. If there's an error then
+errno will be set.
 
 ERRORS
 ------
