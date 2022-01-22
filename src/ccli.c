@@ -897,15 +897,12 @@ void ccli_line_refresh(struct ccli *ccli)
 }
 
 static void insert_word(struct ccli *ccli, struct line_buf *line,
-			const char *word, int len, char delim)
+			const char *word, int len)
 {
 	int i;
 
 	for (i = 0; i < len; i++)
 		line_insert(line, word[i]);
-	if (delim != CCLI_NOSPACE)
-		line_insert(line, delim);
-	refresh(ccli, line, 0);
 }
 
 static void print_completion_flat(struct ccli *ccli, const char *match,
@@ -984,6 +981,49 @@ static void print_completion(struct ccli *ccli, const char *match,
 	}
 }
 
+/*
+ * return the number of characters that match between @a and @b.
+ */
+static int match_chars(const char *a, const char *b)
+{
+	int i;
+
+	for (i = 0; a[i] && b[i]; i++) {
+		if (a[i] != b[i])
+			break;
+	}
+	return i;
+}
+
+static int find_matches(const char *match, int mlen, char **list, int cnt,
+			int *last_match, int *max)
+{
+	int max_match = -1;
+	int matched = 0;
+	int i, x, l, m = -1;
+
+	for (i = 0; i < cnt; i++) {
+		/* If list[i] failed to allocate, we need to handle that */
+		if (!list[i])
+			continue;
+		if (!mlen || strncmp(list[i], match, mlen) == 0) {
+			if (m >= 0) {
+				x = match_chars(list[m], list[i]);
+				if (max_match < 0 || x < max_match)
+					max_match = x;
+			} else {
+				m = i;
+			}
+			matched++;
+			l = i;
+		}
+	}
+	*last_match = l;
+	*max = max_match;
+	return matched;
+}
+
+
 static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 {
 	struct command *cmd;
@@ -997,10 +1037,11 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	int word;
 	int argc;
 	int mlen;
+	int last;
+	int max;
 	int len;
 	int cnt = 0;
 	int ret;
-	int m;
 	int i;
 
 	ret = line_copy(&copy, line, line->pos);
@@ -1034,26 +1075,23 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		delim = ' ';
 
 	if (cnt) {
-		for (i = 0; i < cnt; i++) {
-			/* If list[i] failed to allocate, we need to handle that */
-			if (!list[i])
-				continue;
-			if (!mlen || strncmp(list[i], match, mlen) == 0) {
-				matched++;
-				m = i;
-			}
-		}
+		matched = find_matches(match, mlen, list, cnt, &last, &max);
 
 		if (matched == 1) {
-			len = strlen(list[m]);
-			insert_word(ccli, line, list[m] + mlen, len - mlen, delim);
-
-		} else if (tab && matched > 1) {
-			echo(ccli, '\n');
-
-			print_completion(ccli, match, mlen, cnt, list);
-			refresh(ccli, line, 0);
+			len = strlen(list[last]);
+			insert_word(ccli, line, list[last] + mlen, len - mlen);
+			if (delim != CCLI_NOSPACE)
+				line_insert(line, delim);
 		}
+
+		if (matched > 1 && max > mlen)
+			insert_word(ccli, line, list[last] + mlen, max - mlen);
+
+		if (tab && matched > 1) {
+			echo(ccli, '\n');
+			print_completion(ccli, match, mlen, cnt, list);
+		}
+		refresh(ccli, line, 0);
 
 		for (i = 0; i < cnt; i++)
 			free(list[i]);
@@ -1069,10 +1107,12 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 {
 	struct command *command;
 	char **commands;
+	int matched;
+	int last;
 	int len;
+	int max;
 	int i = line->pos - 1;
-	int s, m = 0;
-	int match = -1;
+	int s;
 
 	/* Completion currently only works with the first word */
 	while (i >= 0 && !ISSPACE(line->line[i]))
@@ -1089,46 +1129,41 @@ static void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	len = line->pos - s;
 
-	/* Find how many commands match */
-	for (i = 0; i < ccli->nr_commands; i++) {
-		command = &ccli->commands[i];
-		if (!len || strncmp(line->line + s, command->cmd, len) == 0) {
-			match = i;
-			m++;
-		}
-	}
-
-	if (!m)
-		return;
-
-	if (m == 1) {
-		/* select it */
-		command = &ccli->commands[match];
-		m = strlen(command->cmd);
-		insert_word(ccli, line, command->cmd + len, m - len, ' ');
-		line_insert(line, ' ');
-		refresh(ccli, line, 0);
-		return;
-	}
-
-	/* list all the matches if tab was hit more than once */
-	if (!tab)
-		return;
-
-	echo(ccli, '\n');
-
 	commands = calloc(ccli->nr_commands, sizeof(char *));
 	if (!commands)
 		return;
 
 	for (i = 0; i < ccli->nr_commands; i++)
-		commands[i] = strdup(ccli->commands[i].cmd);
+		commands[i] = ccli->commands[i].cmd;
+
+	/* Find how many commands match */
+	matched = find_matches(line->line + s, len, commands,
+			       ccli->nr_commands, &last, &max);
+	if (!matched)
+		goto out_free;
+
+	if (matched == 1) {
+		/* select it */
+		command = &ccli->commands[last];
+		i = strlen(command->cmd);
+		insert_word(ccli, line, command->cmd + len, i - len);
+		line_insert(line, ' ');
+		refresh(ccli, line, 0);
+		goto out_free;
+	}
+
+	/* list all the matches if tab was hit more than once */
+	if (!tab)
+		goto out_free;
+
+	echo(ccli, '\n');
 
 	print_completion(ccli, line->line + s, len,
 			  ccli->nr_commands, commands);
 
 	refresh(ccli, line, 0);
-	free_argv(ccli->nr_commands, commands);
+ out_free:
+	free(commands);
 }
 
 /**
