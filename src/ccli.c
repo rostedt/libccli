@@ -299,6 +299,10 @@ void ccli_free(struct ccli *ccli)
 	for (i = 0; i < ccli->nr_commands; i++)
 		free(ccli->commands[i].cmd);
 
+	for (i = 0; i < ccli->history_size; i++)
+		free(ccli->history[i]);
+	free(ccli->history);
+
 	free(ccli->commands);
 	free(ccli->temp_line);
 	free(ccli);
