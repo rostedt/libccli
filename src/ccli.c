@@ -96,7 +96,7 @@ static int history_add(struct ccli *ccli, char *line)
 	int idx;
 
 	if (ccli->history_size < ccli->history_max) {
-		lines = realloc(ccli->history, sizeof(*lines) * ccli->history_size + 1);
+		lines = realloc(ccli->history, sizeof(*lines) * (ccli->history_size + 1));
 		if (!lines)
 			return -1;
 		lines[ccli->history_size] = NULL;
