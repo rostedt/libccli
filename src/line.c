@@ -131,13 +131,13 @@ __hidden int line_del_word(struct line_buf *line)
 	if (!line->pos)
 		return 0;
 
-	while (line->pos-- && isspace(line->line[line->pos]))
+	while (line->pos-- && !isalnum(line->line[line->pos]))
 		;
 
-	while (line->pos && !isspace(line->line[line->pos]))
+	while (line->pos && isalnum(line->line[line->pos]))
 		line->pos--;
 
-	if (isspace(line->line[line->pos]))
+	if (!isalnum(line->line[line->pos]))
 		line->pos++;
 
 	len = line->len - s;
