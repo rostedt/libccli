@@ -3,7 +3,8 @@ libccli(3)
 
 NAME
 ----
-ccli_alloc, ccli_free, ccli_register_command, ccli_register_completion, ccli_unregister_command, ccli_loop - A CLI interface for C programs.
+ccli_alloc, ccli_free, ccli_in, ccli_out, ccli_register_command, ccli_register_completion,
+ccli_unregister_command, ccli_loop - A CLI interface for C programs.
 
 SYNOPSIS
 --------
@@ -13,6 +14,9 @@ SYNOPSIS
 
 struct ccli pass:[*]*ccli_alloc*(const char pass:[*]_prompt_, int _in_, int _out_);
 void *ccli_free*(struct ccli pass:[*]_ccli_);
+
+int *ccli_in*(struct ccli pass:[*]_ccli_);
+int *ccli_out*(struct ccli pass:[*]_ccli_);
 
 int *ccli_register_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
 			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
@@ -34,6 +38,10 @@ the _ccli_ descriptor with *ccli_alloc()*. The interface created will have
 the prompt defined by _prompt_ (none if _prompt_ is NULL), and till take over
 control of the input and output file descriptors _in_ and _out_ (usually
 passed in as STDIN_FILENO and STDOUT_FILENO respectively).
+
+The file descriptors passed to *ccli_alloc()* can be retrived with *ccli_in()*
+for the input _in_ file desrciptor and *ccli_out()* for the output _out_
+file descriptor.
 
 Calling *ccli_loop()* with the _ccli_ descriptor, will then read on the
 input file descriptor waiting for input. The user (who is on the other end
@@ -151,6 +159,10 @@ and NULL on error.
 *ccli_registrer_command()* returns 0 on success and -1 on error.
 
 *ccli_register_completion()* returns 0 on success and -1 on error.
+
+*ccli_in()* returns the input file descriptor from *ccli_alloc()*.
+
+*ccli_out()* returns the output file descriptor from *ccli_alloc()*.
 
 ERRORS
 ------

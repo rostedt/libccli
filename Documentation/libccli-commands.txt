@@ -208,6 +208,8 @@ SEE ALSO
 *libccli*(3),
 *ccli_alloc*(3),
 *ccli_free*(3),
+*ccli_in*(3),
+*ccli_out*(3),
 *ccli_register_command*(3),
 *ccli_register_completion*(3),
 *ccli_register_default*(3),

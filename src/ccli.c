@@ -462,6 +462,30 @@ void ccli_free(struct ccli *ccli)
 }
 
 /**
+ * ccli_in - return the input file descriptor.
+ * @ccli: The CLI descriptor to get the input file descriptor from.
+ *
+ * Returns the file descriptor for @ccli that was given as the
+ *   input in ccli_alloc();
+ */
+int ccli_in(struct ccli *ccli)
+{
+	return ccli->in;
+}
+
+/**
+ * ccli_out - return the output file descriptor.
+ * @ccli: The CLI descriptor to get the output file descriptor from.
+ *
+ * Returns the file descriptor for @ccli that was given as the
+ *   output in ccli_alloc();
+ */
+int ccli_out(struct ccli *ccli)
+{
+	return ccli->out;
+}
+
+/**
  * ccli_printf - Write to the output descriptor of ccli
  * @ccli: The CLI descriptor to write to.
  * @fmt: A printf() like format to write.
