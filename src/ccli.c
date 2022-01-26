@@ -1003,6 +1003,7 @@ static void print_completion(struct ccli *ccli, const char *match,
 		}
 		echo(ccli, '\n');
 	}
+	free(spaces);
 }
 
 /*
