@@ -216,6 +216,7 @@ SEE ALSO
 *ccli_register_unknown*(3),
 *ccli_loop*(3)
 *ccli_printf*(3)
+*ccli_vprintf*(3)
 *ccli_getchar*(3)
 
 AUTHOR

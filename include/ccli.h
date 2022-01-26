@@ -32,6 +32,7 @@ int ccli_out(struct ccli *ccli);
 
 __attribute__((__format__(printf, 2, 3)))
 int ccli_printf(struct ccli *ccli, const char *fmt, ...);
+int ccli_vprintf(struct ccli *ccli, const char *fmt, va_list ap);
 
 int ccli_loop(struct ccli *ccli);
 int ccli_register_command(struct ccli *ccli, const char *command_name,

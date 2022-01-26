@@ -346,6 +346,7 @@ SEE ALSO
 *ccli_register_unknown*(3),
 *ccli_register_interrupt*(3),
 *ccli_printf*(3),
+*ccli_vprintf*(3),
 *ccli_getchar*(3)
 *ccli_line_parse*(3),
 *ccli_line_reset*(3),

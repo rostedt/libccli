@@ -486,25 +486,24 @@ int ccli_out(struct ccli *ccli)
 }
 
 /**
- * ccli_printf - Write to the output descriptor of ccli
+ * ccli_vprintf - Write to the output descriptor of ccli
  * @ccli: The CLI descriptor to write to.
  * @fmt: A printf() like format to write.
+ * @ap: The argument list
  *
  * Writes to the output descriptor of @ccli the content passed in.
  *
  * Returns the number of characters written on success, and
  *   -1 on error.
  */
-int ccli_printf(struct ccli *ccli, const char *fmt, ...)
+int ccli_vprintf(struct ccli *ccli, const char *fmt, va_list ap)
 {
-	va_list ap1, ap2;
+	va_list ap2;
 	char *buf = NULL;
 	int len;
 
-	va_start(ap1, fmt);
-	va_copy(ap2, ap1);
-	len = vsnprintf(NULL, 0, fmt, ap1);
-	va_end(ap1);
+	va_copy(ap2, ap);
+	len = vsnprintf(NULL, 0, fmt, ap);
 
 	if (len > 0) {
 		buf = malloc(len + 1);
@@ -518,6 +517,28 @@ int ccli_printf(struct ccli *ccli, const char *fmt, ...)
 	if (len > 0)
 		echo_str(ccli, buf);
 	free(buf);
+
+	return len;
+}
+
+/**
+ * ccli_printf - Write to the output descriptor of ccli
+ * @ccli: The CLI descriptor to write to.
+ * @fmt: A printf() like format to write.
+ *
+ * Writes to the output descriptor of @ccli the content passed in.
+ *
+ * Returns the number of characters written on success, and
+ *   -1 on error.
+ */
+int ccli_printf(struct ccli *ccli, const char *fmt, ...)
+{
+	va_list ap;
+	int len;
+
+	va_start(ap, fmt);
+	len = ccli_vprintf(ccli, fmt, ap);
+	va_end(ap);
 
 	return len;
 }
