@@ -950,7 +950,7 @@ static void print_completion(struct ccli *ccli, const char *match,
 	char *str;
 	int max_len = 0;
 	int cols, rows;
-	int i, x;
+	int i, x, c = 0;
 	int ret;
 
 	if (!ccli->in_tty)
@@ -991,6 +991,21 @@ static void print_completion(struct ccli *ccli, const char *match,
 	rows = (nr_str + cols - 1) / cols;
 
 	for (i = 0; i < rows; i++) {
+		char ans = 0;;
+
+		if (!c && i && !(i % (w.ws_row - 1))) {
+			echo_str(ccli, "--Type <RET> for more, q to quit, c to continue without paging--");
+			read(ccli->in, &ans, 1);
+			echo(ccli, '\n');
+			switch (ans) {
+			case 'q':
+				i = rows;
+				continue;
+			case 'c':
+				c = 1;
+				break;
+			}
+		}
 		for (x = 0; x < cols; x++) {
 			if (x * rows + i >= nr_str)
 				continue;
