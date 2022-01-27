@@ -59,6 +59,7 @@ struct ccli {
 	bool			in_tty;
 	int			in;
 	int			out;
+	int			w_row;
 	int			nr_commands;
 	struct command		*commands;
 	struct command		enter;
@@ -543,6 +544,78 @@ int ccli_printf(struct ccli *ccli, const char *fmt, ...)
 	return len;
 }
 
+static char page_stop(struct ccli *ccli)
+{
+	char ans;
+
+	echo_str(ccli, "--Type <RET> for more, q to quit, c to continue without paging--");
+	read(ccli->in, &ans, 1);
+	echo(ccli, '\n');
+	return ans;
+}
+
+/**
+ * ccli_page - Write to the output descriptor of ccli and prompt at window size
+ * @ccli: The CLI descriptor to write to.
+ * @line: The current line count
+ * @fmt: A printf() like format to write.
+ *
+ * Just like ccli_printf() which rites to the output descriptor of @ccli
+ * the content passed in, but this will also stop to ask the user to
+ * read more, quit or continue when the amount reaches the size of
+ * the window.
+ *
+ * When @line matches the window size, the prompt will be displayed.
+ * Note, the window size is only calculated when @line is zero.
+ *
+ * If @line is less than zero, no prompt will be displayed.
+ *
+ * Return -1 on error (with ERRNO set) or if the user asks to quit.
+ *         1 for another screen full.
+ *         0 to not stop.
+
+ */
+int ccli_page(struct ccli *ccli, int line, const char *fmt, ...)
+{
+	struct winsize w;
+	va_list ap;
+	char ans;
+	int len;
+	int ret;
+
+	switch (line) {
+	case 0:
+		break;
+	case 1:
+		ret = ioctl(ccli->in, TIOCGWINSZ, &w);
+		if (ret < 0) {
+			line = 0;
+			break;
+		}
+		ccli->w_row = w.ws_row;
+		break;
+	default:
+		if (line < 0)
+			return line;
+		if (!(line % ccli->w_row)) {
+			ans = page_stop(ccli);
+			switch (ans) {
+			case 'q':
+				return -1;
+			case 'c':
+				line = 0;
+				break;
+			}
+		}
+	}
+
+	va_start(ap, fmt);
+	len = ccli_vprintf(ccli, fmt, ap);
+	va_end(ap);
+
+	return len >= 0 ? line > 0 ? line + 1 : line : len;
+}
+
 static struct command *find_command(struct ccli *ccli, const char *cmd)
 {
 	int i;
@@ -1015,9 +1088,7 @@ static void print_completion(struct ccli *ccli, const char *match,
 		char ans = 0;;
 
 		if (!c && i && !(i % (w.ws_row - 1))) {
-			echo_str(ccli, "--Type <RET> for more, q to quit, c to continue without paging--");
-			read(ccli->in, &ans, 1);
-			echo(ccli, '\n');
+			ans = page_stop(ccli);
 			switch (ans) {
 			case 'q':
 				i = rows;

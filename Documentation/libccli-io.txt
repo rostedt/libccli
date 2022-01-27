@@ -13,6 +13,9 @@ SYNOPSIS
 
 int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
 int *ccli_vprintf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, va_list _ap_);
+
+int *ccli_page*(struct ccli pass:[*]_ccli_, int _line_, const char pass:[*]_fmt_, ...);
+
 int *ccli_getchar*(struct ccli pass:[*]_ccli_);
 --
 
@@ -30,6 +33,17 @@ If a callback needs to write to the output file descriptor passed in as _out_ to
 The *ccli_vprintf()* acts the same as *ccli_printf()* but takes a va_list instead.
 This is similar to the way *vprintf*(3) works.
 
+If a lot needs to be displayed, the use of *ccli_page()* can be used. This works the
+same as *ccli_printf()* but takes a _line_ argument. This should be initized as 1
+and set to the return value of the *ccli_page()* call. When the print is about to
+extend the size of the screen, a prompt will be displayed to ask the user if they
+want another screen full, to quit, or to just continue and print everything without
+stopping again to be prompted. Normally, the return of *ccli_page()* will be
+_line_ + 1. But if the prompt happens, and the user hits 'q', then -1 will be
+returned, and the application should honor this request and not print any more.
+If the user hits 'c' to continue without prompting, then zero (0) is returned, and
+when _line_ is zero that is passed into *ccli_page()* then no prompt will be displayed.
+
 There may be case to need to read from the input defined by *ccli_alloc*(3).
 For example, to implement a pager for output may want a character
 from the user to continue.
@@ -38,6 +52,10 @@ RETURN VALUE
 ------------
 *ccli_printf()* returns the number of characters written or -1 on error.
 *ccli_vprintf()* returns the number of characters written or -1 on error.
+
+*ccli_page()* returns _line_ + 1 to continue normally, 0 if the user does not
+want to prompt again, and -1 on error or the user hit 'q' at the prompt to quit.
+If the user hit 'q' then ERRNO will not be set.
 
 *ccli_getchar()* returns the character that was inputed. It will not
 return non printable characters and white space. It will return
