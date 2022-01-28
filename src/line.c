@@ -123,14 +123,17 @@ __hidden void line_backspace(struct line_buf *line)
 	line->line[line->len] = '\0';
 }
 
-__hidden int line_del_word(struct line_buf *line)
+__hidden void line_right_word(struct line_buf *line)
 {
-	int len;
-	int s = line->pos;
+	while (line->pos < line->len && !isalnum(line->line[++line->pos]))
+		;
 
-	if (!line->pos)
-		return 0;
+	while (line->pos < line->len && isalnum(line->line[++line->pos]))
+		;
+}
 
+__hidden void line_left_word(struct line_buf *line)
+{
 	while (line->pos-- && !isalnum(line->line[line->pos]))
 		;
 
@@ -139,6 +142,17 @@ __hidden int line_del_word(struct line_buf *line)
 
 	if (!isalnum(line->line[line->pos]))
 		line->pos++;
+}
+
+__hidden int line_del_word(struct line_buf *line)
+{
+	int len;
+	int s = line->pos;
+
+	if (!line->pos)
+		return 0;
+
+	line_left_word(line);
 
 	len = line->len - s;
 	line->len -= s - line->pos;

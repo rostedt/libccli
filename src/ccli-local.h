@@ -28,6 +28,8 @@ extern void line_cleanup(struct line_buf *line);
 extern int line_insert(struct line_buf *line, char ch);
 extern void line_right(struct line_buf *line);
 extern void line_left(struct line_buf *line);
+extern void line_right_word(struct line_buf *line);
+extern void line_left_word(struct line_buf *line);
 extern void line_home(struct line_buf *line);
 extern void line_end(struct line_buf *line);
 extern void line_backspace(struct line_buf *line);

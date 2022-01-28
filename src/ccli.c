@@ -39,6 +39,8 @@ enum {
 	CHAR_PAGEUP		= -11,
 	CHAR_PAGEDOWN		= -12,
 	CHAR_DELWORD		= -13,
+	CHAR_RIGHT_WORD		= -14,
+	CHAR_LEFT_WORD		= -15,
 };
 
 struct command {
@@ -117,8 +119,11 @@ static void clear_line(struct ccli *ccli, struct line_buf *line)
 static int read_char(struct ccli *ccli)
 {
 	bool bracket = false;
+	bool semi = false;
+	bool five = false;
 	bool esc = false;
 	unsigned char ch;
+	int one = 0;
 	int num = 0;
 	int r;
 
@@ -171,6 +176,11 @@ static int read_char(struct ccli *ccli)
 				}
 			}
 			if (num) {
+				if (ch == '1') {
+					one = num;
+					num = 0;
+					break;
+				}
 				if (ch != '~') {
 					dprint("unknown num=%d %c (%d)\n", num, ch, ch);
 					num = 0;
@@ -193,6 +203,37 @@ static int read_char(struct ccli *ccli)
 				num = 0;
 				break;
 			}
+			if (one) {
+				if (ch != ';') {
+					dprint("Unknown one=%d %c (%d)\n", one, ch, ch);
+					one = 0;
+					break;
+				}
+				semi = true;
+				one = 0;
+				break;
+			}
+			if (semi) {
+				if (ch != '5') {
+					dprint("Unknown semi %c (%d)\n", ch, ch);
+					break;
+				}
+				semi = false;
+				five = true;
+				break;
+			}
+			if (five){
+				switch (ch) {
+				case 'C':
+					return CHAR_RIGHT_WORD;
+				case 'D':
+					return CHAR_LEFT_WORD;
+				default:
+					dprint("Unknown five %c (%d)\n", ch, ch);
+				}
+				five = false;
+			}
+
 			if (isprint(ch) || isspace(ch))
 				return ch;
 
@@ -232,6 +273,8 @@ int ccli_getchar(struct ccli *ccli)
 		case CHAR_END:
 		case CHAR_PAGEUP:
 		case CHAR_PAGEDOWN:
+		case CHAR_RIGHT_WORD:
+		case CHAR_LEFT_WORD:
 			continue;
 		default:
 			if (r < 0)
@@ -1388,6 +1431,14 @@ int ccli_loop(struct ccli *ccli)
 			break;
 		case CHAR_PAGEDOWN:
 			history_down(ccli, &line, DEFAULT_PAGE_SCROLL);
+			refresh(ccli, &line, 0);
+			break;
+		case CHAR_LEFT_WORD:
+			line_left_word(&line);
+			refresh(ccli, &line, 0);
+			break;
+		case CHAR_RIGHT_WORD:
+			line_right_word(&line);
 			refresh(ccli, &line, 0);
 			break;
 
