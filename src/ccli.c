@@ -123,7 +123,6 @@ static int read_char(struct ccli *ccli)
 	bool five = false;
 	bool esc = false;
 	unsigned char ch;
-	int one = 0;
 	int num = 0;
 	int r;
 
@@ -174,14 +173,17 @@ static int read_char(struct ccli *ccli)
 					dprint("unknown bracket %c (%d)\n", ch, ch);
 					break;
 				}
+				break;
 			}
 			if (num) {
-				if (ch == '1') {
-					one = num;
-					num = 0;
+				switch (ch) {
+				case '~':
 					break;
-				}
-				if (ch != '~') {
+				case ';':
+					num = 0;
+					semi = true;
+					break;
+				default:
 					dprint("unknown num=%d %c (%d)\n", num, ch, ch);
 					num = 0;
 					break;
@@ -201,16 +203,6 @@ static int read_char(struct ccli *ccli)
 					break;
 				}
 				num = 0;
-				break;
-			}
-			if (one) {
-				if (ch != ';') {
-					dprint("Unknown one=%d %c (%d)\n", one, ch, ch);
-					one = 0;
-					break;
-				}
-				semi = true;
-				one = 0;
 				break;
 			}
 			if (semi) {
