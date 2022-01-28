@@ -140,9 +140,9 @@ enum {
 	TYPE_UNSIGNED,
 };
 
-static void show_address(struct rfile *rf, struct ccli *ccli, int offset)
+static int show_address(struct rfile *rf, struct ccli *ccli, int offset, int line)
 {
-	ccli_printf(ccli, "%016zx: ", rf->pos + offset);
+	return ccli_page(ccli, line, "%016zx: ", rf->pos + offset);
 }
 
 static int read_string(struct rfile *rf, struct ccli *ccli,
@@ -171,7 +171,7 @@ static int read_string(struct rfile *rf, struct ccli *ccli,
 	if (rf->pos + len > rf->size)
 		len = rf->size - rf->pos;
 
-	show_address(rf, ccli, 0);
+	show_address(rf, ccli, 0, 1);
 	ccli_printf(ccli, "'%.*s'\n", (int)len, (char *)rf->map + rf->pos);
 	return 0;
 }
@@ -265,7 +265,7 @@ static int read_file(struct ccli *ccli, const char *command,
 
 	memcpy(ptr, rf->map + rf->pos, size);
 
-	show_address(rf, ccli, 0);
+	show_address(rf, ccli, 0, 1);
 
 	switch (t) {
 	case TYPE_HEX:
@@ -430,6 +430,7 @@ static int dump_file(struct ccli *ccli, const char *command,
 	struct rfile *rf = data;
 	unsigned char ch;
 	int len = 512;
+	int l = 1;
 	int i, x;
 
 	if (argc > 1) {
@@ -448,7 +449,9 @@ static int dump_file(struct ccli *ccli, const char *command,
 		len = rf->size - rf->pos;
 
 	for (i = 0; i < len; i++) {
-		show_address(rf, ccli, i);
+		l = show_address(rf, ccli, i, l);
+		if (l < 0)
+			break;
 
 		for (x = 0; x < 8; x++) {
 			if (x + i < len) {
