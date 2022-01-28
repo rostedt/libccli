@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <dirent.h>
 
 #include "ccli-local.h"
@@ -24,6 +25,8 @@
 
 #define DEFAULT_HISTORY_MAX	256
 #define DEFAULT_PAGE_SCROLL	24
+
+#define READ_BUF		256
 
 enum {
 	CHAR_ERROR		= -1,
@@ -70,12 +73,43 @@ struct ccli {
 	void			*interrupt_data;
 	char			*prompt;
 	char			**history;
+	unsigned char		read_start;
+	unsigned char		read_end;
+	char			read_buf[READ_BUF];
 };
 
 static void cleanup(struct ccli *ccli)
 {
 	tcsetattr(ccli->in, TCSANOW, &ccli->savein);
 	tcsetattr(ccli->out, TCSANOW, &ccli->saveout);
+}
+
+static void inc_read_buf_start(struct ccli *ccli)
+{
+	if (ccli->read_start == READ_BUF - 1)
+		ccli->read_start = 0;
+	else
+		ccli->read_start++;
+}
+
+static void inc_read_buf_end(struct ccli *ccli)
+{
+	if (ccli->read_end == READ_BUF - 1)
+		ccli->read_end = 0;
+	else
+		ccli->read_end++;
+}
+
+static bool read_buf_empty(struct ccli *ccli)
+{
+	return ccli->read_start == ccli->read_end;
+}
+
+static bool read_buf_full(struct ccli *ccli)
+{
+	if (ccli->read_start)
+		return ccli->read_end + 1 == ccli->read_start;
+	return ccli->read_end == READ_BUF - 1;
 }
 
 static void echo(struct ccli *ccli, char ch)
@@ -127,9 +161,14 @@ static int read_char(struct ccli *ccli)
 	int r;
 
 	for (;;) {
-		r = read(ccli->in, &ch, 1);
-		if (r <= 0)
-			return CHAR_ERROR;
+		if (!read_buf_empty(ccli)) {
+			ch = ccli->read_buf[ccli->read_start];
+			inc_read_buf_start(ccli);
+		} else {
+			r = read(ccli->in, &ch, 1);
+			if (r <= 0)
+				return CHAR_ERROR;
+		}
 
 		switch (ch) {
 		case 3: /* ETX */
@@ -612,14 +651,32 @@ static char page_stop(struct ccli *ccli)
  */
 int ccli_page(struct ccli *ccli, int line, const char *fmt, ...)
 {
+	struct timeval tv;
 	struct winsize w;
+	fd_set rfds;
 	va_list ap;
 	char ans;
 	int len;
 	int ret;
+	char ch;
 
 	switch (line) {
 	case 0:
+		/* Check for Ctrl^C */
+		memset(&tv, 0, sizeof(tv));
+		FD_ZERO(&rfds);
+		FD_SET(ccli->in, &rfds);
+		if (select(ccli->in + 1, &rfds, NULL, NULL, &tv) > 0) {
+			ret = read(ccli->in, &ch, 1);
+			if (ret == 1) {
+				if (ch == 3)
+					return -1;
+				if (!read_buf_full(ccli)) {
+					ccli->read_buf[ccli->read_end] = ch;
+					inc_read_buf_end(ccli);
+				}
+			}
+		}
 		break;
 	case 1:
 		ret = ioctl(ccli->in, TIOCGWINSZ, &w);
