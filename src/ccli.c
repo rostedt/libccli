@@ -628,6 +628,30 @@ static char page_stop(struct ccli *ccli)
 	return ans;
 }
 
+static bool check_for_ctrl_c(struct ccli *ccli)
+{
+	struct timeval tv;
+	fd_set rfds;
+	char ch;
+	int ret;
+
+	memset(&tv, 0, sizeof(tv));
+	FD_ZERO(&rfds);
+	FD_SET(ccli->in, &rfds);
+	if (select(ccli->in + 1, &rfds, NULL, NULL, &tv) > 0) {
+		ret = read(ccli->in, &ch, 1);
+		if (ret == 1) {
+			if (ch == 3)
+				return true;
+			if (!read_buf_full(ccli)) {
+				ccli->read_buf[ccli->read_end] = ch;
+				inc_read_buf_end(ccli);
+			}
+		}
+	}
+	return false;
+}
+
 /**
  * ccli_page - Write to the output descriptor of ccli and prompt at window size
  * @ccli: The CLI descriptor to write to.
@@ -651,32 +675,16 @@ static char page_stop(struct ccli *ccli)
  */
 int ccli_page(struct ccli *ccli, int line, const char *fmt, ...)
 {
-	struct timeval tv;
 	struct winsize w;
-	fd_set rfds;
 	va_list ap;
 	char ans;
 	int len;
 	int ret;
-	char ch;
 
 	switch (line) {
 	case 0:
-		/* Check for Ctrl^C */
-		memset(&tv, 0, sizeof(tv));
-		FD_ZERO(&rfds);
-		FD_SET(ccli->in, &rfds);
-		if (select(ccli->in + 1, &rfds, NULL, NULL, &tv) > 0) {
-			ret = read(ccli->in, &ch, 1);
-			if (ret == 1) {
-				if (ch == 3)
-					return -1;
-				if (!read_buf_full(ccli)) {
-					ccli->read_buf[ccli->read_end] = ch;
-					inc_read_buf_end(ccli);
-				}
-			}
-		}
+		if (check_for_ctrl_c(ccli))
+			return -1;
 		break;
 	case 1:
 		ret = ioctl(ccli->in, TIOCGWINSZ, &w);
@@ -1178,6 +1186,9 @@ static void print_completion(struct ccli *ccli, const char *match,
 
 	for (i = 0; i < rows; i++) {
 		char ans = 0;;
+
+		if (check_for_ctrl_c(ccli))
+			break;
 
 		if (!c && i && !(i % (w.ws_row - 1))) {
 			ans = page_stop(ccli);
