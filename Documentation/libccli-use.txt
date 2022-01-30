@@ -354,6 +354,12 @@ SEE ALSO
 *ccli_line_refresh*(3),
 *ccli_argv_free*(3),
 *ccli_history*(3),
+*ccli_history_load*(3),
+*ccli_history_save*(3),
+*ccli_history_load_file*(3),
+*ccli_history_save_file*(3),
+*ccli_history_load_fd*(3),
+*ccli_history_save_fd*(3)
 *ccli_execute*(3)
 
 AUTHOR

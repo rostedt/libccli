@@ -591,6 +591,8 @@ int main (int argc, char **argv)
 	if (!cli)
 		pdie("Creating command line interface");
 
+	ccli_history_load(cli, "read_file");
+
 	ccli_register_command(cli, "read", read_file, &rf);
 	ccli_register_command(cli, "goto", goto_file, &rf);
 	ccli_register_command(cli, "dump", dump_file, &rf);
@@ -603,6 +605,7 @@ int main (int argc, char **argv)
 	ccli_register_interrupt(cli, do_interrupt, NULL);
 
 	ccli_loop(cli);
+	ccli_history_save(cli, "read_file");
 	ccli_free(cli);
 
 	exit(0);

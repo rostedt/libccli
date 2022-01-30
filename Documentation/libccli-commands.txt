@@ -203,6 +203,12 @@ SEE ALSO
 *ccli_register_unknown*(3),
 *ccli_loop*(3),
 *ccli_history*(3),
+*ccli_history_load*(3),
+*ccli_history_save*(3),
+*ccli_history_load_file*(3),
+*ccli_history_save_file*(3),
+*ccli_history_load_fd*(3),
+*ccli_history_save_fd*(3)
 *ccli_printf*(3),
 *ccli_vprintf*(3),
 *ccli_getchar*(3)

@@ -3,7 +3,8 @@ libccli(3)
 
 NAME
 ----
-ccli_history - Commands for manipulating libccli history
+ccli_history, ccli_history_load, ccli_history_save, ccli_history_load_file,
+ccli_history_save_file, ccli_history_load_fd, ccli_history_save_fd - Commands for manipulating libccli history
 
 SYNOPSIS
 --------
@@ -12,6 +13,15 @@ SYNOPSIS
 *#include <ccli.h>*
 
 const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int _past_);
+
+int *ccli_history_load*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_);
+int *ccli_history_save*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_);
+
+int *ccli_history_load_file*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_, const char pass:[*]_file_);
+int *ccli_history_save_file*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_, const char pass:[*]_file_);
+
+int *ccli_history_load_fd*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_, int _fd_);
+int *ccli_history_save_fd*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_, int _fd_);
 --
 
 DESCRIPTION
@@ -27,6 +37,51 @@ _ccli_ descriptor. It will retrieve the command that was entered _past_
 commands ago. This could be useful to replay a command from the default
 callback this is registered by *ccli_register_default(3)*.
 
+Several functions can be used to save and restore the history.
+
+*ccli_history_save()* will save the current history into the ccli specific
+cache file (defined either by $(XDG_CACHE_HOME)/ccli or if the XDG_CACHE_HOME
+environment variable is not defined, then it will be at $(HOME)/.cache/ccli.
+If the HOME environment variable is not defined, then nothing will be done.
+
+The _tag_ is used to denote what history is to be saved. If history exists
+in the file with the same label as the _tag_, then it will first be removed
+from the file, and the new history will be appended to the end of the file
+and labeled with _tag_. It will not affect the history that are labeled
+with other tags.
+
+The *ccli_histroy_load()* will read the ccli specific file defined with the
+same logic as *ccli_history_save()*. If the environment variables are not
+defined, then nothing is done.
+
+A search for _tag_ is done, and the history associated with the _tag_ will
+be loaded into the given _ccli_.
+
+The *ccli_history_save_file()* acts the same as *ccli_history_save()*
+except that it will not use the ccli specific file, but instead uses
+the _file_ passed in. Like *ccli_history_save()* it will remove the existing
+history in _file_ that is labeled with _tag_ and then append the new history
+from _ccli_ at the end of the file.
+
+The *ccli_history_load_file()* acts the same as *ccli_history_load()*
+except that it will not use the ccli specific file, but instead uses
+the _file_ passed in. Like *ccli_history_load()* it will search for the
+history in _file_ that is labeled with _tag_ and load that into _ccli_.
+
+The *ccli_history_save_fd()* will write the contents of the history to _fd_
+where the current position of _fd_ is. Unlike *ccli_history_save()* and
+*ccli_history_save_file()*, it will *not* remove the existing history
+with the same _tag_. If the application uses *ccli_history_save_fd()*, then
+it is up to the application to remove the previous history with _tag_
+if it does not want duplicates.
+
+The *ccli_history_load_fd()* will read the contents of _fd_ and search for
+the start of the history that has a label that matches _tag_, and it will
+read that history into _ccli_, and then stop. If there's more than one
+set of history with the same label, and the application wants to add
+the history of those, then it must call *ccli_history_load_fd()* multiple
+times. One for each one that was found.
+
 RETURN VALUE
 ------------
 *ccli_history()* returns the string that represents a command that was
@@ -34,6 +89,12 @@ RETURN VALUE
    farther than the history that is stored, then NULL is returned.
    Note that the string that is returned is internal to the _ccli_
    descriptor and should not be modified.
+
+*ccli_history_save()*, *ccli_history_save_file()*, and *ccli_history_save_fd()* all
+return the number of history lines written, or -1 on error.
+
+*ccli_history_load()*, *ccli_history_load_file()*, and *ccli_history_load_fd()* all
+return the number of history lines read, or -1 on error.
 
 ERRORS
 ------
@@ -45,7 +106,144 @@ The following errors are for all the above calls:
 
 EXAMPLE
 -------
-See *ccli_line_parse*(3) for an example.
+[source,c]
+--
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <unistd.h>
+
+#include "ccli.h"
+
+#define H_PROMPT "history> "
+
+struct history {
+	char		*file;
+	char		*tag;
+	bool		write_history;
+};
+
+/* Save the history of the tag and file given */
+static int save_history(struct ccli *ccli, const char *command,
+			const char *line, void *data,
+			int argc, char **argv)
+{
+	struct history *h = data;
+
+	if (h->file)
+		ccli_history_save_file(ccli, h->tag, h->file);
+	else
+		ccli_history_save(ccli, h->tag);
+
+	return 0;
+}
+
+/* Do not save our history on exit */
+static int no_history(struct ccli *ccli, const char *command,
+			const char *line, void *data,
+			int argc, char **argv)
+{
+	struct history *h = data;
+
+	h->write_history = false;
+
+	return 0;
+}
+
+/* Save our history on exit */
+static int yes_history(struct ccli *ccli, const char *command,
+		       const char *line, void *data,
+		       int argc, char **argv)
+{
+	struct history *h = data;
+
+	h->write_history = true;
+
+	return 0;
+}
+
+/* A number command will show past history */
+static int do_unknown(struct ccli *ccli, const char *command,
+		      const char *line, void *data,
+		      int argc, char **argv)
+{
+	const char *hist;
+	char *arg;
+	int i;
+
+	if (argc < 1) // should never happen
+		return 0;
+
+	arg = argv[0];
+
+	if (!isdigit(arg[0])) {
+		ccli_printf(ccli, "Type a number for past history\n");
+		return 0;
+	}
+
+	i = atoi(argv[0]);
+
+	hist = ccli_history(ccli, i);
+	if (hist)
+		ccli_printf(ccli, "History %d ago: %s\n", i, hist);
+	else
+		ccli_printf(ccli, "No history at %d\n", i);
+
+	return 0;
+}
+
+int main (int argc, char **argv)
+{
+	struct ccli *ccli;
+	struct history h;
+	char *file = NULL;
+	char *tag;
+
+	if (argc < 2) {
+		printf("usage: tag [file]\n");
+		exit(0);
+	}
+
+	tag = argv[1];
+
+	if (argc > 2)
+		file = argv[2];
+
+	h.tag = tag;
+	h.file = file;
+	h.write_history = true;
+
+	ccli = ccli_alloc(H_PROMPT, STDIN_FILENO, STDOUT_FILENO);
+	if (!ccli) {
+		perror("ccli_alloc");
+		exit(-1);
+	}
+	/* Load our own history */
+	ccli_history_load(ccli, "cli-history");
+
+	if (file)
+		ccli_history_load_file(ccli, tag, file);
+	else
+		ccli_history_load(ccli, tag);
+
+	ccli_register_command(ccli, "save", save_history, &h);
+	ccli_register_command(ccli, "no_history", no_history, &h);
+	ccli_register_command(ccli, "yes_history", yes_history, &h);
+
+	ccli_register_unknown(ccli, do_unknown, NULL);
+
+	ccli_loop(ccli);
+	if (h.write_history)
+		ccli_history_save(ccli, "cli-history");
+
+	ccli_free(ccli);
+
+	exit(0);
+
+	return 0;
+}
+--
 
 FILES
 -----

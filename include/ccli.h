@@ -64,9 +64,17 @@ int ccli_line_inject(struct ccli *ccli, const char *str, int pos);
 void ccli_line_refresh(struct ccli *ccli);
 
 const char *ccli_history(struct ccli *ccli, int past);
+int ccli_history_save_fd(struct ccli *ccli, const char *name, int fd);
 
 int ccli_getchar(struct ccli *ccli);
 
 int ccli_execute(struct ccli *ccli, const char *line, bool hist);
+
+int ccli_history_load(struct ccli *ccli, const char *tag);
+int ccli_history_save(struct ccli *ccli, const char *tag);
+int ccli_history_load_file(struct ccli *ccli, const char *tag, const char *file);
+int ccli_history_save_file(struct ccli *ccli, const char *tag, const char *file);
+int ccli_history_load_fd(struct ccli *ccli, const char *tag, int fd);
+int ccli_history_save_fd(struct ccli *ccli, const char *tag, int fd);
 
 #endif
