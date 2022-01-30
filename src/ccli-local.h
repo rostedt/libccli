@@ -5,8 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <ctype.h>
+#include <errno.h>
+#include <termios.h>
 
 #include <ccli.h>
 
@@ -20,6 +21,63 @@ struct line_buf {
 	int len;
 	int pos;
 };
+
+#define DEFAULT_HISTORY_MAX	256
+#define DEFAULT_PAGE_SCROLL	24
+
+#define READ_BUF		256
+
+enum {
+	CHAR_ERROR		= -1,
+	CHAR_BACKSPACE		= -2,
+	CHAR_DEL		= -3,
+	CHAR_INTR		= -4,
+	CHAR_UP			= -5,
+	CHAR_DOWN		= -6,
+	CHAR_RIGHT		= -7,
+	CHAR_LEFT		= -8,
+	CHAR_HOME		= -9,
+	CHAR_END		= -10,
+	CHAR_PAGEUP		= -11,
+	CHAR_PAGEDOWN		= -12,
+	CHAR_DELWORD		= -13,
+	CHAR_RIGHT_WORD		= -14,
+	CHAR_LEFT_WORD		= -15,
+};
+
+struct command {
+	char			*cmd;
+	ccli_command_callback	callback;
+	ccli_completion		completion;
+	void			*data;
+};
+
+struct ccli {
+	struct termios		savein;
+	struct termios		saveout;
+	struct line_buf		*line;
+	char			*temp_line;
+	int			history_max;
+	int			history_size;
+	int			current_line;
+	bool			in_tty;
+	int			in;
+	int			out;
+	int			w_row;
+	int			nr_commands;
+	struct command		*commands;
+	struct command		enter;
+	struct command		unknown;
+	ccli_interrupt		interrupt;
+	void			*interrupt_data;
+	char			*prompt;
+	char			**history;
+	unsigned char		read_start;
+	unsigned char		read_end;
+	char			read_buf[READ_BUF];
+};
+
+extern void clear_line(struct ccli *ccli, struct line_buf *line);
 
 extern int line_init(struct line_buf *line);
 extern int line_init_str(struct line_buf *line, const char *str);
@@ -38,6 +96,10 @@ extern int line_del_word(struct line_buf *line);
 extern int line_copy(struct line_buf *dst, struct line_buf *src, int len);
 extern int line_parse(struct line_buf *line, char ***pargv);
 extern void line_replace(struct line_buf *line, char *str);
+
+extern int history_add(struct ccli *ccli, char *line);
+extern int history_up(struct ccli *ccli, struct line_buf *line, int cnt);
+extern int history_down(struct ccli *ccli, struct line_buf *line, int cnt);
 
 extern void free_argv(int argc, char **argv);
 

@@ -5,7 +5,6 @@
  * Copyright (C) 2022 Steven Rostedt <rostedt@goodmis.org>
  */
 #include <stdarg.h>
-#include <termios.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -22,61 +21,6 @@
 #else
 #define dprint(x...)
 #endif
-
-#define DEFAULT_HISTORY_MAX	256
-#define DEFAULT_PAGE_SCROLL	24
-
-#define READ_BUF		256
-
-enum {
-	CHAR_ERROR		= -1,
-	CHAR_BACKSPACE		= -2,
-	CHAR_DEL		= -3,
-	CHAR_INTR		= -4,
-	CHAR_UP			= -5,
-	CHAR_DOWN		= -6,
-	CHAR_RIGHT		= -7,
-	CHAR_LEFT		= -8,
-	CHAR_HOME		= -9,
-	CHAR_END		= -10,
-	CHAR_PAGEUP		= -11,
-	CHAR_PAGEDOWN		= -12,
-	CHAR_DELWORD		= -13,
-	CHAR_RIGHT_WORD		= -14,
-	CHAR_LEFT_WORD		= -15,
-};
-
-struct command {
-	char			*cmd;
-	ccli_command_callback	callback;
-	ccli_completion		completion;
-	void			*data;
-};
-
-struct ccli {
-	struct termios		savein;
-	struct termios		saveout;
-	struct line_buf		*line;
-	char			*temp_line;
-	int			history_max;
-	int			history_size;
-	int			current_line;
-	bool			in_tty;
-	int			in;
-	int			out;
-	int			w_row;
-	int			nr_commands;
-	struct command		*commands;
-	struct command		enter;
-	struct command		unknown;
-	ccli_interrupt		interrupt;
-	void			*interrupt_data;
-	char			*prompt;
-	char			**history;
-	unsigned char		read_start;
-	unsigned char		read_end;
-	char			read_buf[READ_BUF];
-};
 
 static void cleanup(struct ccli *ccli)
 {
@@ -135,7 +79,7 @@ static void echo_prompt(struct ccli *ccli)
 	echo_str(ccli, ccli->prompt);
 }
 
-static void clear_line(struct ccli *ccli, struct line_buf *line)
+__hidden void clear_line(struct ccli *ccli, struct line_buf *line)
 {
 	int len;
 	int i;
@@ -315,107 +259,6 @@ int ccli_getchar(struct ccli *ccli)
 	}
 
 	return r;
-}
-
-static int history_add(struct ccli *ccli, char *line)
-{
-	char **lines;
-	int idx;
-
-	if (ccli->history_size < ccli->history_max) {
-		lines = realloc(ccli->history, sizeof(*lines) * (ccli->history_size + 1));
-		if (!lines)
-			return -1;
-		lines[ccli->history_size] = NULL;
-		ccli->history = lines;
-	}
-
-	idx = ccli->history_size % ccli->history_max;
-
-	free(ccli->history[idx]);
-	ccli->history[idx] = strdup(line);
-	if (!ccli->history[idx])
-		return -1;
-
-	ccli->history_size++;
-	ccli->current_line = ccli->history_size;
-
-	return 0;
-}
-
-static int history_up(struct ccli *ccli, struct line_buf *line, int cnt)
-{
-	int current = ccli->current_line;
-	int idx;
-	char *str;
-
-	if (ccli->current_line > cnt)
-		ccli->current_line -= cnt;
-	else
-		ccli->current_line = 0;
-
-	if (ccli->history_size > ccli->history_max &&
-	    ccli->current_line <= ccli->history_size - ccli->history_max)
-		ccli->current_line = (ccli->history_size - ccli->history_max) + 1;
-
-	if (current == ccli->current_line)
-		return 1;
-
-	clear_line(ccli, line);
-
-	/* Store the current line in case it was modifed */
-	str = strdup(ccli->line->line);
-	if (str) {
-		if (current >= ccli->history_size) {
-			free(ccli->temp_line);
-			ccli->temp_line = str;
-		} else {
-			idx = current % ccli->history_max;
-			free(ccli->history[idx]);
-			ccli->history[idx] = str;
-		}
-	}
-
-	idx = ccli->current_line % ccli->history_max;
-	line_replace(line, ccli->history[idx]);
-	return 0;
-}
-
-static int history_down(struct ccli *ccli, struct line_buf *line, int cnt)
-{
-	int current = ccli->current_line;
-	int idx;
-	char *str;
-
-	ccli->current_line += cnt;
-
-	if (ccli->current_line > (ccli->history_size))
-		ccli->current_line = ccli->history_size;
-
-	if (ccli->current_line == ccli->history_size) {
-		/* Restore the command that was before moving in history */
-		if (ccli->temp_line) {
-			clear_line(ccli, line);
-			line_replace(line, ccli->temp_line);
-			free(ccli->temp_line);
-			ccli->temp_line = NULL;
-		}
-		return 1;
-	}
-
-	clear_line(ccli, line);
-
-	/* Store the current line in case it was modifed */
-	str = strdup(ccli->line->line);
-	if (str) {
-		idx = current % ccli->history_max;
-		free(ccli->history[idx]);
-		ccli->history[idx] = str;
-	}
-
-	idx = ccli->current_line % ccli->history_max;
-	line_replace(line, ccli->history[idx]);
-	return 0;
 }
 
 static int unknown_default(struct ccli *ccli, const char *command,
@@ -925,30 +768,6 @@ int ccli_register_interrupt(struct ccli *ccli, ccli_interrupt callback,
 	ccli->interrupt = callback;
 	ccli->interrupt_data = data;
 	return 0;
-}
-
-/**
- * ccli_history - return a previous entered line from the past
- * @ccli: The ccli descriptor to read the histor from
- * @past: How far back to go
- *
- * Reads the line that happened @past commands ago and returns it.
- *
- * Returns a string that should not be modifiied if there was
- *   a command that happened @past commands ago, otherwise NULL.
- */
-const char *ccli_history(struct ccli *ccli, int past)
-{
-	int idx;
-
-	if (past > ccli->history_size ||
-	    past > ccli->history_max)
-		return NULL;
-
-	idx = ccli->history_size - past;
-	idx %= ccli->history_max;
-
-	return ccli->history[idx];
 }
 
 /**

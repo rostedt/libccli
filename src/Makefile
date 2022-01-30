@@ -5,6 +5,7 @@ include $(src)/scripts/utils.mk
 OBJS =
 OBJS += ccli.o
 OBJS += line.o
+OBJS += history.o
 
 OBJS := $(OBJS:%.o=$(bdir)/%.o)
 DEPS := $(OBJS:$(bdir)/%.o=$(bdir)/.%.d)
