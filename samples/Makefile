@@ -4,6 +4,7 @@ include $(src)/scripts/utils.mk
 
 TARGETS :=
 TARGETS += read-file
+TARGETS += cli-history
 
 sdir := $(obj)/bin
 
