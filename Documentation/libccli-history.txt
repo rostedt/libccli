@@ -1,0 +1,103 @@
+libccli(3)
+==========
+
+NAME
+----
+ccli_history - Commands for manipulating libccli history
+
+SYNOPSIS
+--------
+[verse]
+--
+*#include <ccli.h>*
+
+const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int _past_);
+--
+
+DESCRIPTION
+-----------
+libccli is a simple API to create a CLI interface with the user.
+After a descriptor is created from *ccli_alloc(3)* and a command is registered
+with *ccli_register_command(3)* or one of the similar functions, these are
+the functions that can be useful in the callback.
+
+The history of previous commands that were entered could be retrieved
+via *ccli_history()* to get the pervious commands entered into the
+_ccli_ descriptor. It will retrieve the command that was entered _past_
+commands ago. This could be useful to replay a command from the default
+callback this is registered by *ccli_register_default(3)*.
+
+RETURN VALUE
+------------
+*ccli_history()* returns the string that represents a command that was
+   entered before defined by the _past_ parameter. If _past_ goes back
+   farther than the history that is stored, then NULL is returned.
+   Note that the string that is returned is internal to the _ccli_
+   descriptor and should not be modified.
+
+ERRORS
+------
+The following errors are for all the above calls:
+
+*ENOMEM* Memory allocation error.
+
+*EINVAL* One of the input parameters was invalid.
+
+EXAMPLE
+-------
+See *ccli_line_parse*(3) for an example.
+
+FILES
+-----
+[verse]
+--
+*ccli.h*
+	Header file to include in order to have access to the library APIs.
+*-ccli*
+	Linker switch to add when building a program that uses the library.
+--
+
+SEE ALSO
+--------
+*libccli*(3),
+*ccli_alloc*(3),
+*ccli_free*(3),
+*ccli_in*(3),
+*ccli_out*(3),
+*ccli_register_command*(3),
+*ccli_register_completion*(3),
+*ccli_register_default*(3),
+*ccli_register_unknown*(3),
+*ccli_loop*(3)
+*ccli_printf*(3)
+*ccli_vprintf*(3)
+*ccli_getchar*(3)
+*ccli_line_parse*(3),
+*ccli_line_reset*(3),
+*ccli_line_inject*(3),
+*ccli_line_refresh*(3),
+*ccli_argv_free*(3),
+*ccli_execute*(3)
+
+AUTHOR
+------
+[verse]
+--
+*Steven Rostedt* <rostedt@goodmis.org>
+--
+REPORTING BUGS
+--------------
+Report bugs to  <rostedt@goodmis.org>
+
+LICENSE
+-------
+libccli is Free Software licensed under the GNU LGPL 2.1
+
+RESOURCES
+---------
+https://github.com/rostedt/libccli
+
+COPYING
+-------
+Copyright \(C) 2022 Steven Rostedt. Free use of this software is granted under
+the terms of the GNU Public License (GPL).

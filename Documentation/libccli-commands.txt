@@ -4,7 +4,7 @@ libccli(3)
 NAME
 ----
 ccli_line_parse, ccli_line_reset, ccli_line_inject, ccli_line_refresh,
-ccli_argv_free, ccli_history, ccli_execute - Commands for libccli callbacks.
+ccli_argv_free, ccli_execute - Commands for libccli callbacks.
 
 SYNOPSIS
 --------
@@ -19,7 +19,6 @@ void *ccli_line_reset*(struct ccli pass:[*]_ccli_);
 int *ccli_line_inject*(struct ccli pass:[*]_ccli_, char pass:[*]string, int _pos_);
 void *ccli_line_refresh*(struct ccli pass:[*]_ccli_);
 
-const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int _past_);
 const int *ccli_execute*(struct ccli pass:[*]_ccli_, const char pass:[*]_line_, bool _hist_);
 --
 
@@ -54,12 +53,6 @@ it may want to call *ccli_line_refresh()*. This will update what is
 displayed to the user. It will restore the prompt and what is on the
 the command line internally.
 
-The history of previous commands that were entered could be retrieved
-via *ccli_history()* to get the pervious commands entered into the
-_ccli_ descriptor. It will retrieve the command that was entered _past_
-commands ago. This could be useful to replay a command from the default
-callback this is registered by *ccli_register_default(3)*.
-
 To execute lines outside the *ccli_loop*(3), the *ccli_execute()* can be
 called. It will execute _line_ just as if a user typed it and hit "enter".
 Note, the _line_ should not contain a new line ('\n') character, just the
@@ -73,12 +66,6 @@ RETURN VALUE
    is 1 or more, then _argv_ must be freed with *ccli_argv_free()*.
 
 *ccli_line_inject()* returns 0 on success and -1 on error.
-
-*ccli_history()* returns the string that represents a command that was
-   entered before defined by the _past_ parameter. If _past_ goes back
-   farther than the history that is stored, then NULL is returned.
-   Note that the string that is returned is internal to the _ccli_
-   descriptor and should not be modified.
 
 *ccli_execute()* returns what the command would return (the callback from
    *ccli_register_command*(3) or -1 with ERRNO set on internal error
@@ -214,9 +201,10 @@ SEE ALSO
 *ccli_register_completion*(3),
 *ccli_register_default*(3),
 *ccli_register_unknown*(3),
-*ccli_loop*(3)
-*ccli_printf*(3)
-*ccli_vprintf*(3)
+*ccli_loop*(3),
+*ccli_history*(3),
+*ccli_printf*(3),
+*ccli_vprintf*(3),
 *ccli_getchar*(3)
 
 AUTHOR
