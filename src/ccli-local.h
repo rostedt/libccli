@@ -31,7 +31,6 @@ enum {
 	CHAR_ERROR		= -1,
 	CHAR_INTR		= -2,
 	CHAR_IGNORE_END		= -10,
-	CHAR_BACKSPACE		= -11,
 	CHAR_DEL		= -12,
 	CHAR_UP			= -13,
 	CHAR_DOWN		= -14,
@@ -44,7 +43,10 @@ enum {
 	CHAR_DELWORD		= -21,
 	CHAR_RIGHT_WORD		= -22,
 	CHAR_LEFT_WORD		= -23,
-	CHAR_IGNORE_START	= -24,
+	CHAR_IGNORE_START_H	= -24,
+	CHAR_BACKSPACE		= -25,
+	CHAR_REVERSE		= -26,
+	CHAR_IGNORE_START	= -27,
 };
 
 struct command {
@@ -80,6 +82,10 @@ struct ccli {
 };
 
 extern void clear_line(struct ccli *ccli, struct line_buf *line);
+extern int read_char(struct ccli *ccli);
+
+extern void echo(struct ccli *ccli, char ch);
+extern int echo_str(struct ccli *ccli, char *str);
 
 extern int line_init(struct line_buf *line);
 extern int line_init_str(struct line_buf *line, const char *str);
@@ -102,6 +108,7 @@ extern void line_replace(struct line_buf *line, char *str);
 extern int history_add(struct ccli *ccli, char *line);
 extern int history_up(struct ccli *ccli, struct line_buf *line, int cnt);
 extern int history_down(struct ccli *ccli, struct line_buf *line, int cnt);
+extern int history_search(struct ccli *ccli, struct line_buf *line, int *pad);
 
 extern void free_argv(int argc, char **argv);
 

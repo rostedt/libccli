@@ -56,14 +56,14 @@ static bool read_buf_full(struct ccli *ccli)
 	return ccli->read_end == READ_BUF - 1;
 }
 
-static void echo(struct ccli *ccli, char ch)
+__hidden void echo(struct ccli *ccli, char ch)
 {
 	write(ccli->out, &ch, 1);
 }
 
-static void echo_str(struct ccli *ccli, char *str)
+__hidden int echo_str(struct ccli *ccli, char *str)
 {
-	write(ccli->out, str, strlen(str));
+	return write(ccli->out, str, strlen(str));
 }
 
 static void echo_str_len(struct ccli *ccli, char *str, int len)
@@ -94,7 +94,7 @@ __hidden void clear_line(struct ccli *ccli, struct line_buf *line)
 		echo(ccli, ' ');
 }
 
-static int read_char(struct ccli *ccli)
+__hidden int read_char(struct ccli *ccli)
 {
 	bool bracket = false;
 	bool semi = false;
@@ -117,6 +117,8 @@ static int read_char(struct ccli *ccli)
 		switch (ch) {
 		case 3: /* ETX */
 			return CHAR_INTR;
+		case 18: /* DC2 */
+			return CHAR_REVERSE;
 		case 27: /* ESC */
 			esc = true;
 			break;
@@ -1238,6 +1240,7 @@ int ccli_loop(struct ccli *ccli)
 		if (ch == CHAR_ERROR)
 			break;
 
+ again:
 		if (ch != '\t')
 			tab = 0;
 		switch (ch) {
@@ -1255,6 +1258,14 @@ int ccli_loop(struct ccli *ccli)
 		case CHAR_INTR:
 			ret = ccli->interrupt(ccli, line.line,
 					      line.pos, ccli->interrupt_data);
+			break;
+		case CHAR_REVERSE:
+			clear_line(ccli, &line);
+			ch = history_search(ccli, &line, &pad);
+			pad = pad > line.len ? pad - line.len : 0;
+			refresh(ccli, &line, pad);
+			if (ch != CHAR_INTR)
+				goto again;
 			break;
 		case CHAR_BACKSPACE:
 			line_backspace(&line);

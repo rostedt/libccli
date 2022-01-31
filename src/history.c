@@ -16,6 +16,11 @@
 #define CCLI_HISTORY_LINE_END \
 	"%%%%---ccli---%%%%"
 
+static inline int history_idx(struct ccli *ccli, int idx)
+{
+	return idx % ccli->history_max;
+}
+
 __hidden int history_add(struct ccli *ccli, char *line)
 {
 	char **lines;
@@ -29,7 +34,7 @@ __hidden int history_add(struct ccli *ccli, char *line)
 		ccli->history = lines;
 	}
 
-	idx = ccli->history_size % ccli->history_max;
+	idx = history_idx(ccli, ccli->history_size);
 
 	free(ccli->history[idx]);
 	ccli->history[idx] = strdup(line);
@@ -42,11 +47,29 @@ __hidden int history_add(struct ccli *ccli, char *line)
 	return 0;
 }
 
+static void save_current(struct ccli *ccli, int current)
+{
+	char *str;
+	int idx;
+
+	/* Store the current line in case it was modifed */
+	str = strdup(ccli->line->line);
+	if (str) {
+		if (current >= ccli->history_size) {
+			free(ccli->temp_line);
+			ccli->temp_line = str;
+		} else {
+			idx = history_idx(ccli, current);
+			free(ccli->history[idx]);
+			ccli->history[idx] = str;
+		}
+	}
+}
+
 __hidden int history_up(struct ccli *ccli, struct line_buf *line, int cnt)
 {
 	int current = ccli->current_line;
 	int idx;
-	char *str;
 
 	if (ccli->current_line > cnt)
 		ccli->current_line -= cnt;
@@ -56,28 +79,26 @@ __hidden int history_up(struct ccli *ccli, struct line_buf *line, int cnt)
 	if (ccli->history_size > ccli->history_max &&
 	    ccli->current_line <= ccli->history_size - ccli->history_max)
 		ccli->current_line = (ccli->history_size - ccli->history_max) + 1;
-
 	if (current == ccli->current_line)
 		return 1;
 
 	clear_line(ccli, line);
+	save_current(ccli, current);
 
-	/* Store the current line in case it was modifed */
-	str = strdup(ccli->line->line);
-	if (str) {
-		if (current >= ccli->history_size) {
-			free(ccli->temp_line);
-			ccli->temp_line = str;
-		} else {
-			idx = current % ccli->history_max;
-			free(ccli->history[idx]);
-			ccli->history[idx] = str;
-		}
-	}
-
-	idx = ccli->current_line % ccli->history_max;
+	idx = history_idx(ccli, ccli->current_line);
 	line_replace(line, ccli->history[idx]);
 	return 0;
+}
+
+static void restore_current(struct ccli *ccli, struct line_buf *line)
+{
+	/* Restore the command that was before moving in history */
+	if (ccli->temp_line) {
+		clear_line(ccli, line);
+		line_replace(line, ccli->temp_line);
+		free(ccli->temp_line);
+		ccli->temp_line = NULL;
+	}
 }
 
 __hidden int history_down(struct ccli *ccli, struct line_buf *line, int cnt)
@@ -92,13 +113,7 @@ __hidden int history_down(struct ccli *ccli, struct line_buf *line, int cnt)
 		ccli->current_line = ccli->history_size;
 
 	if (ccli->current_line == ccli->history_size) {
-		/* Restore the command that was before moving in history */
-		if (ccli->temp_line) {
-			clear_line(ccli, line);
-			line_replace(line, ccli->temp_line);
-			free(ccli->temp_line);
-			ccli->temp_line = NULL;
-		}
+		restore_current(ccli, line);
 		return 1;
 	}
 
@@ -107,14 +122,131 @@ __hidden int history_down(struct ccli *ccli, struct line_buf *line, int cnt)
 	/* Store the current line in case it was modifed */
 	str = strdup(ccli->line->line);
 	if (str) {
-		idx = current % ccli->history_max;
+		idx = history_idx(ccli, current);
 		free(ccli->history[idx]);
 		ccli->history[idx] = str;
 	}
 
-	idx = ccli->current_line % ccli->history_max;
+	idx = history_idx(ccli, ccli->current_line);
 	line_replace(line, ccli->history[idx]);
 	return 0;
+}
+
+#define REVERSE_STR	"reverse-i-search"
+
+static void refresh(struct ccli *ccli, struct line_buf *line,
+		    struct line_buf *search, int *old_len, const char *p)
+{
+	int len = 0;
+	int pos = 0;
+	int i;
+
+	echo_str(ccli, "\r(");
+	if (!p)
+		len += echo_str(ccli, "failed ");
+
+	len += echo_str(ccli, REVERSE_STR ")`");
+	len += echo_str(ccli, search->line);
+	len += echo_str(ccli, "': ");
+	len += echo_str(ccli, line->line);
+
+	len += line->len;
+
+	if (*old_len > len) {
+		pos = *old_len - len;
+		for (i = 0; i < pos; i++)
+			echo(ccli, ' ');
+	}
+
+	pos += line->len - line->pos;
+	for (i = 0; i < pos; i++)
+		echo(ccli, '\b');
+
+	*old_len = len;
+}
+
+__hidden int history_search(struct ccli *ccli, struct line_buf *line, int *pad)
+{
+	struct line_buf search;
+	char *hist;
+	char *p = NULL;
+	int old_len;
+	int pos = line->pos;
+	int min;
+	int idx;
+	int ret;
+	int ch;
+	int i;
+
+	*pad = 0;
+
+	if (line_init(&search))
+		return CHAR_INTR;
+
+	old_len = line->len + strlen(REVERSE_STR) + 6;
+
+	min = ccli->history_size > ccli->history_max ?
+		ccli->history_size - ccli->history_max : 0;
+
+	echo_str(ccli, "\r(" REVERSE_STR ")`': ");
+	echo_str(ccli, line->line);
+	pos = line->len - pos;
+	for (i = 0; i < pos; i++)
+		echo(ccli, '\b');
+
+	pos = ccli->current_line;
+
+	for (;;) {
+		ch = read_char(ccli);
+		switch (ch) {
+		case CHAR_INTR:
+			echo_str(ccli, "^C\n");
+			line_reset(line);
+			line_reset(&search);
+			goto out;
+		case CHAR_IGNORE_START_H ... CHAR_IGNORE_END:
+		case '\n':
+			goto out;
+		case CHAR_BACKSPACE:
+			if (!search.len)
+				break;
+			line_backspace(&search);
+			goto search;
+			break;
+		case CHAR_REVERSE:
+			pos--;
+			goto search;
+		default:
+			ret = line_insert(&search, ch);
+			if (ret)
+				break;
+ search:
+			p = NULL;
+			for (i = pos; i >= min; i--) {
+				if (i >= ccli->history_size)
+					continue;
+				idx = history_idx(ccli, i);
+				hist = ccli->history[idx];
+				p = strstr(hist, search.line);
+				if (!p)
+					continue;
+				break;
+			}
+			if (p) {
+				if (ccli->current_line >= ccli->history_size)
+					save_current(ccli, ccli->current_line);
+				ccli->current_line = i;
+				line_replace(line, hist);
+				line->pos = p - hist + search.len;
+			}
+			refresh(ccli, line, &search, &old_len, p);
+			break;
+		}
+	}
+ out:
+	*pad = search.len + line->len + sizeof(REVERSE_STR) + 5;
+	line_cleanup(&search);
+	return ch;
 }
 
 /**
