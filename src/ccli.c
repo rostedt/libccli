@@ -237,19 +237,7 @@ int ccli_getchar(struct ccli *ccli)
 		switch (r) {
 		case CHAR_INTR:
 			return 0;
-		case CHAR_BACKSPACE:
-		case CHAR_DEL:
-		case CHAR_DELWORD:
-		case CHAR_UP:
-		case CHAR_DOWN:
-		case CHAR_RIGHT:
-		case CHAR_LEFT:
-		case CHAR_HOME:
-		case CHAR_END:
-		case CHAR_PAGEUP:
-		case CHAR_PAGEDOWN:
-		case CHAR_RIGHT_WORD:
-		case CHAR_LEFT_WORD:
+		case CHAR_IGNORE_START ... CHAR_IGNORE_END:
 			continue;
 		default:
 			if (r < 0)
