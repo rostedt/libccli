@@ -1,0 +1,163 @@
+libccli(3)
+==========
+
+NAME
+----
+ccli_register_completion - Add completions for the CLI interface for C programs
+
+SYNOPSIS
+--------
+[verse]
+--
+*#include <ccli.h>*
+
+int *ccli_register_completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
+			  int (pass:[*]_completion_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
+						   int, char pass:[*], char pass:[***], void pass:[*]));
+--
+
+DESCRIPTION
+-----------
+This is a simple API to create a CLI interface with the user. To start, create
+the _ccli_ descriptor with *ccli_alloc()*. The interface created will have
+the prompt defined by _prompt_ (none if _prompt_ is NULL), and till take over
+control of the input and output file descriptors _in_ and _out_ (usually
+passed in as STDIN_FILENO and STDOUT_FILENO respectively).
+
+By default, there is tab completion for any registered command. That is,
+if the user types a few characters then hits tab, if what they type
+matches a single command, it will be filled in for them. If there's more
+than one match and the user hits tab more than once, it will display
+a list of possible matches (similar to what bash does). But this is only for
+the commands. For parameters after the command, any completions must be
+registered with *ccli_register_completion()*, which takes the _ccli_
+descriptor returned by *ccli_alloc()*, the _command_name_ to register a
+_completion_ function for. Note, if the command that matches _command_name_
+already has a completion function registered it, then it will be replaced by
+_completion_ of this call. Only one completion function may be registered
+to a command at a time.
+
+The _completion_ function has the following prototype:
+[verse]
+--
+   int *completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_, const char pass:[*]_line_,
+		 int _word_, char pass:[*]_match_, char pass:[***]_list_, void pass:[*]_data_);
+--
+
+When the user hits "tab" for a command that has a completion registered to it,
+the _completion_ callback is called with the following parameters:
+
+_ccli_ - will be the _ccli_ descriptor returned by *ccli_alloc()*
+
+_command_ - a string that matches the command of the first word.
+
+_line_ - The full line up to where the user's cursor is.
+
+_word_ - The index of the word being matched (zero being the command itself, and
+	the first parameter would be one).
+
+_match_ - The word that is currently being completed (empty if the cursor is
+         on a space). May be modified to show what to append on match.
+
+_list_ - A pointer to a string array that should be allocated and filled in
+         with the list of possible matches.
+
+_data_ - The _data_ that was passed in when the command was registered with
+        *ccli_register_completion()*.
+
+The _completion_ callback is expected to allocate a list of strings (char pass:[**])
+and fill it with allocated strings (char pass:[*]) of what matches. The return of
+_completion_ is the number of allocated words in the _list_. If zero or negative
+is returned, then *list should not be allocated, and any allocation done by _completion_
+should be cleaned up before the return. See EXAMPLE for an example of handling
+completions for a specific command.
+
+By default, on a single match, the word that matches will be added plus a single
+space behind it. To change this behavior, and add something other than a space
+(for example a '/'), the _match_ parameter can have its ending nul '\0' character
+replaced with the character to append. If it is replaced with CCLI_NOSPACE, then
+nothing will be appended to the matched word.
+
+RETURN VALUE
+------------
+*ccli_register_completion()* returns 0 on success and -1 on error.
+
+ERRORS
+------
+The following errors are for all the above calls:
+
+*ENOMEM* Memory allocation error.
+
+*EINVAL* One of the input parameters was invalid.
+
+For *ccli_register_completion()*:
+
+*ENODEV* - The command was not found.
+
+EXAMPLE
+-------
+See *cpu_alloc*(3) for an example.
+
+FILES
+-----
+[verse]
+--
+*ccli.h*
+	Header file to include in order to have access to the library APIs.
+*-ccli*
+	Linker switch to add when building a program that uses the library.
+--
+
+SEE ALSO
+--------
+*libccli*(3),
+*ccli_alloc*(3),
+*ccli_free*(3),
+*ccli_in*(3),
+*ccli_out*(3),
+*ccli_register_command*(3),
+*ccli_register_default*(3),
+*ccli_register_unknown*(3),
+*ccli_loop*(3),
+*ccli_register_default*(3),
+*ccli_register_unknown*(3),
+*ccli_register_interrupt*(3),
+*ccli_printf*(3),
+*ccli_vprintf*(3),
+*ccli_getchar*(3)
+*ccli_line_parse*(3),
+*ccli_line_reset*(3),
+*ccli_line_inject*(3),
+*ccli_line_refresh*(3),
+*ccli_argv_free*(3),
+*ccli_history*(3),
+*ccli_history_load*(3),
+*ccli_history_save*(3),
+*ccli_history_load_file*(3),
+*ccli_history_save_file*(3),
+*ccli_history_load_fd*(3),
+*ccli_history_save_fd*(3)
+*ccli_execute*(3)
+
+AUTHOR
+------
+[verse]
+--
+*Steven Rostedt* <rostedt@goodmis.org>
+--
+REPORTING BUGS
+--------------
+Report bugs to  <rostedt@goodmis.org>
+
+LICENSE
+-------
+libccli is Free Software licensed under the GNU LGPL 2.1
+
+RESOURCES
+---------
+https://github.com/rostedt/libccli
+
+COPYING
+-------
+Copyright \(C) 2022 Steven Rostedt. Free use of this software is granted under
+the terms of the GNU Public License (GPL).
