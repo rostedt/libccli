@@ -168,8 +168,9 @@ static int hello_completion(struct ccli *ccli, const char *command,
 	const char *word4[] = { "out", "want" };
 	const char *word5[] = { "there", "you" };
 	const char **words;
-	char **l;
+	int cnt = 0;
 	int len;
+	int ret;
 	int i;
 
 	switch(word) {
@@ -203,22 +204,14 @@ static int hello_completion(struct ccli *ccli, const char *command,
 	 * We do not worry about matching, the caller will only display
 	 * words that do match "match".
 	 */
-	l = calloc(len, sizeof(char *));
-	if (!l)
-		return -1;
-
 	for (i = 0; i < len; i++) {
-		l[i] = strdup(words[i]);
-		/*
-		 * If the above fails to alloc, the caller will just
-		 * ignore this field. It will be treated as a non-match.
-		 * This may be an issues for the user, but if there's
-		 * memory allocation issues, the user probably has more
-		 * to worry about.
-		 */
+		ret = ccli_list_add(ccli, list, &cnt, words[i]);
+		if (ret < 0) {
+			ccli_list_free(ccli, list, cnt);
+			return -1;
+		}
 	}
 
-	*list = l;
 	return len;
 }
 

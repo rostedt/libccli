@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2022 Steven Rostedt <rostedt@goodmis.org>
  */
+#include <stdarg.h>
 #include <sys/ioctl.h>
 
 #include "ccli-local.h"
@@ -181,6 +182,158 @@ static void insert_word(struct ccli *ccli, struct line_buf *line,
 
 	for (i = 0; i < len; i++)
 		line_insert(line, word[i]);
+}
+
+/* Allocate new lists in 64 word blocks */
+#define LIST_BLK	64
+#define LIST_MASK	(LIST_BLK - 1)
+
+static char **update_list(char ***list, int size)
+{
+	char **words = *list;
+
+	if (!(size & LIST_MASK)) {
+		/* (size + 1 + LIST_BLK - 1) & ~(LIST_MASK) */
+		size = (size + LIST_BLK) & ~(LIST_MASK);
+		/* Add two to be on the safe side */
+		words = realloc(words, sizeof(*words) * (size + 2));
+		if (!words)
+			return NULL;
+		*list = words;
+	}
+	return words;
+}
+
+/**
+ * ccli_list_add - add an copy of a word to the completion list
+ * @ccli: The CLI descriptor.
+ * @list: The list to add to.
+ * @cnt: The current count of items in the list (do not touch)
+ * @word: The word to add to the list.
+ *
+ * Add a @word to the completion list. It will allocate and copy the
+ * @word. If it fails the allocation of the copy, it will continue as
+ * the list can handle NULL entries.
+ *
+ * The @cnt must be initialized to zero, and not touched by the application.
+ * The only modifications to @cnt should be done by one of the list
+ * helper functions.
+ *
+ * Returns the new size of the list on success (even if it fails to
+ *   do the copy, but it does increase the size of the list.
+ *
+ * Returns -1 if it failed to increase the size of the list.
+ */
+int ccli_list_add(struct ccli *ccli, char ***list, int *cnt, const char *word)
+{
+	char **words;
+	int size = *cnt;
+
+	words = update_list(list, size);
+	if (!words)
+		return -1;
+
+	words[size] = strdup(word);
+	/* It's OK if it fails, we can handle it. */
+
+	*cnt = size + 1;
+	return *cnt;
+}
+
+/**
+ * ccli_list_insert - add a pointer to a word to the completion list
+ * @ccli: The CLI descriptor.
+ * @list: The list to add to.
+ * @cnt: The current count of items in the list (do not touch)
+ * @word: The word to add to the list.
+ *
+ * Add a @word to the completion list. It will add the pointer to @word
+ * to the list. The difference between this and ccli_list_add() is that
+ * ccli_list_add() will allocate a copy of @word, where this will use
+ * @word itself to add to the list.
+ *
+ * Note, @word will be freed when the list is freed.
+ *
+ * The @cnt must be initialized to zero, and not touched by the application.
+ * The only modifications to @cnt should be done by one of the list
+ * helper functions.
+ *
+ * Returns the new size of the list on success, or -1 if it failed to
+ *   increase the size of the list.
+ */
+int ccli_list_insert(struct ccli *ccli, char ***list, int *cnt, char *word)
+{
+	char **words;
+	int size = *cnt;
+
+	words = update_list(list, size);
+	if (!words)
+		return -1;
+
+	words[size] = word;
+
+	*cnt = size + 1;
+	return *cnt;
+}
+
+/**
+ * ccli_list_add_printf - add a string to the list
+ * @ccli: The CLI descriptor.
+ * @list: The list to add to.
+ * @cnt: The current count of items in the list (do not touch)
+ * @fmt: The printf format to add
+ *
+ * Add a string to the completion list that is defined by the fmt
+ * and parameters.
+ *
+ * The @cnt must be initialized to zero, and not touched by the application.
+ * The only modifications to @cnt should be done by one of the list
+ * helper functions.
+ *
+ * Returns the new size of the list on success (even if it fails to
+ *   allocate the string, but it does increase the size of the list.
+ *
+ * Returns -1 if it failed to increase the size of the list.
+ */
+int ccli_list_add_printf(struct ccli *ccli, char ***list, int *cnt, const char *fmt, ...)
+{
+	va_list ap;
+	char **words;
+	int size = *cnt;
+
+	words = update_list(list, size);
+	if (!words)
+		return -1;
+
+	va_start(ap, fmt);
+	vasprintf(words + size, fmt, ap);
+	va_end(ap);
+	/* It's OK if it fails, we can handle it. */
+
+	*cnt = size + 1;
+	return *cnt;
+}
+
+/**
+ * ccli_list_free - free a completion list
+ * @ccli: The CLI descriptor.
+ * @list: The list to free.
+ * @cnt: The number of items on the list.
+ *
+ * Will free the @list.
+ */
+void ccli_list_free(struct ccli *ccli, char ***list, int cnt)
+{
+	char **words = *list;
+	int i;
+
+	if (!words)
+		return;
+
+	for (i = 0; i < cnt; i++)
+		free(words[i]);
+	free(words);
+	*list = NULL;
 }
 
 static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)

@@ -14,6 +14,11 @@ SYNOPSIS
 int *ccli_register_completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
 			  int (pass:[*]_completion_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
 						   int, char pass:[*], char pass:[***], void pass:[*]));
+
+int *ccli_list_add*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, const char pass:[*]word);
+int *ccli_list_insert*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, char pass:[*]word);
+int *ccli_list_add_printf*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, const char pass:[*]fmt, ...);
+void *ccli_list_free*(struct ccli pass:[*]ccli, char pass:[***]list, int cnt);
 --
 
 DESCRIPTION
@@ -70,7 +75,11 @@ and fill it with allocated strings (char pass:[*]) of what matches. The return o
 _completion_ is the number of allocated words in the _list_. If zero or negative
 is returned, then *list should not be allocated, and any allocation done by _completion_
 should be cleaned up before the return. See EXAMPLE for an example of handling
-completions for a specific command.
+completions for a specific command. It is recommended that the list is modified with
+the helper functions described here. It is not required, but either the list is
+modified manually, or it is modified only by the helper functions. As the helper
+functions have implementation assumptions, it can be corrupted if the list is
+modified both with the hepler functions and manually.
 
 By default, on a single match, the word that matches will be added plus a single
 space behind it. To change this behavior, and add something other than a space
@@ -78,9 +87,28 @@ space behind it. To change this behavior, and add something other than a space
 replaced with the character to append. If it is replaced with CCLI_NOSPACE, then
 nothing will be appended to the matched word.
 
+*ccli_list_add()* will make a copy of the passed in _word_ and add it to the _list_.
+
+*ccli_list_insert()* will add the _word_ to the list. The _word_ passed in must be
+able to be freed with *free*(3), as it will be freed when the _list_ is freed.
+
+*ccli_list_add_printf()* will allocate a string that holds the format provided by
+_fmt_ and the parameters, similar to *snprintf*(3) does.
+
+*ccli_list_free()* will free the list.
+
+*NOTE:* The _cnt_ passed into all the above must be initialized to zero before calling,
+and must not be manipulated by the application. The above functions will modify _cnt_
+and will depend on its content to keep the integrity of the algorithm.
+
+
 RETURN VALUE
 ------------
 *ccli_register_completion()* returns 0 on success and -1 on error.
+
+*ccli_list_add()*, *ccli_list_insert()*, and *ccli_list_add_printf()* all
+return -1 on failure to increase the size, and on success, will return the
+number of items in the _list_.
 
 ERRORS
 ------
@@ -96,7 +124,87 @@ For *ccli_register_completion()*:
 
 EXAMPLE
 -------
-See *cpu_alloc*(3) for an example.
+[source,c]
+--
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <ccli.h>
+
+static int do_it(struct ccli *ccli, const char *command,
+		 const char *line, void *data,
+		 int argc, char **argv)
+{
+	ccli_printf(ccli, "You typed %s\n", line);
+	return 0;
+}
+
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
+
+static int do_the_completion(struct ccli *ccli, const char *command,
+			     const char *line, int word, char *match,
+			     char ***list, void *data)
+{
+	const char *word1[] = { "a", "b", "c" };
+	const char *word2[] = { "1", "2", "3" };
+	char **argv;
+	int argc;
+	int cnt = 0;
+	int ret = 0;
+	int i;
+
+	argc = ccli_line_parse(line, &argv);
+	if (argc < 0)
+		return 0;
+
+	switch(word) {
+	case 1:
+		for (i = 0; ret >= 0 && i < ARRAY_SIZE(word1); i++)
+			ret = ccli_list_add(ccli, list, &cnt, word1[i]);
+		break;
+	case 2:
+		if (argc < 2)
+			break;
+		for (i = 0; ret >= 0 && i < ARRAY_SIZE(word2); i++)
+			ret = ccli_list_add_printf(ccli, list, &cnt, "%s[%s]", word2[i], argv[1]);
+		break;
+	case 3:
+		if (argc < 2)
+			break;
+		/* Copy argv[1] into the list */
+		ret = ccli_list_insert(ccli, list, &cnt, argv[1]);
+		if (ret > 0) {
+			/* The list now owns it. */
+			argv[1] = NULL;
+		}
+		break;
+	default:
+		ret = -1;
+	}
+	ccli_argv_free(argv);
+	if (ret < 0)
+		ccli_list_free(ccli, list, cnt);
+	return ret;
+}
+
+int main(int argc, char **argv)
+{
+	struct ccli *ccli;
+
+	ccli = ccli_alloc("comp> ", STDIN_FILENO, STDOUT_FILENO);
+
+	ccli_register_command(ccli, "do", do_it, NULL);
+
+	ccli_register_completion(ccli, "do", do_the_completion);
+
+	ccli_loop(ccli);
+
+	ccli_free(ccli);
+
+	return 0;
+}
+--
 
 FILES
 -----

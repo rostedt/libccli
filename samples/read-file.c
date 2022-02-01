@@ -335,31 +335,22 @@ static int read_completion(struct ccli *ccli, const char *command,
 		"s8", "s16", "s32", "s64",
 		"u8", "u16", "u32", "u64",
 		"string" };
-	char **l;
-	int cnt;
+	int cnt = 0;
+	int ret;
 	int i;
 
 	if (word != 1)
 		return 0;
 
-	cnt = ARRAY_SIZE(cmds);
-
-	l = calloc(cnt, sizeof(char *));
-	if (!l)
-		return -1;
-
-	for (i = 0; i < cnt; i++) {
-		l[i] = strdup(cmds[i]);
-		if (!l[i])
+	for (i = 0; i < ARRAY_SIZE(cmds); i++) {
+		ret = ccli_list_add(ccli, list, &cnt, cmds[i]);
+		if (ret < 0)
 			goto out_free;
 	}
 
-	*list = l;
 	return cnt;
  out_free:
-	for (; i >= 0; i--)
-		free(l[i]);
-	free(l);
+	ccli_list_free(ccli, list, cnt);
 	return -1;
 }
 

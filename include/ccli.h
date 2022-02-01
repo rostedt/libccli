@@ -70,6 +70,14 @@ int ccli_getchar(struct ccli *ccli);
 
 int ccli_execute(struct ccli *ccli, const char *line, bool hist);
 
+int ccli_list_add(struct ccli *ccli, char ***list, int *cnt, const char *word);
+int ccli_list_insert(struct ccli *ccli, char ***list, int *cnt, char *word);
+
+__attribute__((__format__(printf, 4, 5)))
+int ccli_list_add_printf(struct ccli *ccli, char ***list, int *cnt, const char *fmt, ...);
+
+void ccli_list_free(struct ccli *ccli, char ***list, int cnt);
+
 int ccli_history_load(struct ccli *ccli, const char *tag);
 int ccli_history_save(struct ccli *ccli, const char *tag);
 int ccli_history_load_file(struct ccli *ccli, const char *tag, const char *file);
