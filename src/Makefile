@@ -6,6 +6,7 @@ OBJS =
 OBJS += ccli.o
 OBJS += line.o
 OBJS += history.o
+OBJS += complete.o
 
 OBJS := $(OBJS:%.o=$(bdir)/%.o)
 DEPS := $(OBJS:$(bdir)/%.o=$(bdir)/.%.d)
