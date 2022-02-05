@@ -3,7 +3,7 @@ libccli(3)
 
 NAME
 ----
-ccli_printf, ccli_vprintf, ccli_getchar - Commands for I/O to the ccli descriptor.
+ccli_printf, ccli_vprintf, ccli_page, ccli_getchar - Commands for I/O to the ccli descriptor.
 
 SYNOPSIS
 --------
