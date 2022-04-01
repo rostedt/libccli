@@ -632,6 +632,7 @@ int ccli_history_save_file(struct ccli *ccli, const char *tag, const char *file)
 	end = lseek(fd, 0, SEEK_CUR);
 	ftruncate(fd, end);
 out:
+	free(line);
 	close(fd);
 	return ret;
 }
