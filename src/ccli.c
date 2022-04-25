@@ -641,6 +641,8 @@ int ccli_register_command(struct ccli *ccli, const char *command_name,
 		return -1;
 	}
 
+	memset(&commands[ccli->nr_commands], 0, sizeof(commands[0]));
+
 	commands[ccli->nr_commands].cmd = cmd;
 	commands[ccli->nr_commands].callback = callback;
 	commands[ccli->nr_commands].data = data;
