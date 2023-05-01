@@ -530,6 +530,14 @@ int ccli_page(struct ccli *ccli, int line, const char *fmt, ...)
 	default:
 		if (line < 0)
 			return line;
+		if (!ccli->w_row) {
+			ret = ioctl(ccli->in, TIOCGWINSZ, &w);
+			if (ret < 0) {
+				line = 0;
+				break;
+			}
+			ccli->w_row = w.ws_row;
+		}
 		if (!(line % ccli->w_row)) {
 			ans = page_stop(ccli);
 			switch (ans) {
