@@ -252,7 +252,10 @@ install_pkgconfig: $(PKG_CONFIG_FILE)
 	$(Q)$(call , $(PKG_CONFIG_FILE)) \
 		$(call do_install_pkgconfig_file,$(prefix))
 
-doc:
+check_doc: force
+	$(Q)$(src)/check-manpages.sh $(src)/Documentation
+
+doc: check_doc
 	$(Q)$(call descend,$(src)/Documentation,all)
 
 doc_clean:
