@@ -11,21 +11,64 @@ SYNOPSIS
 --
 *#include <ccli.h>*
 
-struct ccli pass:[*]*ccli_alloc*(const char pass:[*]_prompt_, int _in_, int _out_);
-void *ccli_free*(struct ccli pass:[*]_ccli_);
+Alloctions:
+	struct ccli pass:[*]*ccli_alloc*(const char pass:[*]_prompt_, int _in_, int _out_);
+	void *ccli_free*(struct ccli pass:[*]_ccli_);
 
-int *ccli_register_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
+Registering commands:
+	int *ccli_register_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
 			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
 						   void pass:[*], int, char pass:[**]),
 			  void pass:[*]_data_);
-int *ccli_register_completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
+	int *ccli_unregister_command*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_);
+	int *ccli_register_default*(struct ccli pass:[*]_ccli_,
+			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
+						   void pass:[*], int, char pass:[**]),
+			  void pass:[*]_data_);
+	int *ccli_register_unknown*(struct ccli pass:[*]_ccli_,
+			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
+						   void pass:[*], int, char pass:[**]),
+			  void pass:[*]_data_);
+	int *ccli_register_interrupt*(struct ccli pass:[*]_ccli_,
+			  int (pass:[*]_callback_)(struct ccli pass:[*], const char pass:[*], int, void pass:[*]);
+
+Commands:
+	int *ccli_line_parse*(const char pass:[*]_line_, char pass:[ ***]_argv_);
+	void *ccli_argv_free*(char pass:[**]_argv_);
+	void *ccli_line_reset*(struct ccli pass:[*]_ccli_);
+	int *ccli_line_inject*(struct ccli pass:[*]_ccli_, char pass:[*]string, int _pos_);
+	void *ccli_line_refresh*(struct ccli pass:[*]_ccli_);
+	const int *ccli_execute*(struct ccli pass:[*]_ccli_, const char pass:[*]_line_, bool _hist_);
+
+Completions:
+
+	int *ccli_register_completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
 			  int (pass:[*]_completion_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
 						   int, const char pass:[*], char pass:[***], void pass:[*]));
+	int *ccli_list_add*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, const char pass:[*]word);
+	int *ccli_list_insert*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, char pass:[*]word);
+	int *ccli_list_add_printf*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, const char pass:[*]fmt, ...);
+	void *ccli_list_free*(struct ccli pass:[*]ccli, char pass:[***]list, int cnt);
 
-int *ccli_loop*(struct ccli pass:[*]_ccli_);
+Main loop:
+	int *ccli_loop*(struct ccli pass:[*]_ccli_);
 
+User input and output:
+	int *ccli_in*(struct ccli pass:[*]_ccli_);
+	int *ccli_out*(struct ccli pass:[*]_ccli_);
+	int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
+	int *ccli_vprintf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, va_list _ap_);
+	int *ccli_page*(struct ccli pass:[*]_ccli_, int _line_, const char pass:[*]_fmt_, ...);
+	int *ccli_getchar*(struct ccli pass:[*]_ccli_);
 
-int *ccli_printf*(struct ccli pass:[*]_ccli_, const char pass:[*]_fmt_, ...);
+History:
+	const char pass:[*]*ccli_history*(struct ccli pass:[*]_ccli_, int _past_);
+	int *ccli_history_load*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_);
+	int *ccli_history_save*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_);
+	int *ccli_history_load_file*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_, const char pass:[*]_file_);
+	int *ccli_history_save_file*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_, const char pass:[*]_file_);
+	int *ccli_history_load_fd*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_, int _fd_);
+	int *ccli_history_save_fd*(struct ccli pass:[*]_ccli_, const char pass:[*]_tag_, int _fd_);
 
 --
 
