@@ -41,20 +41,20 @@ int ccli_register_completion(struct ccli *ccli, const char *command_name,
 }
 
 static void print_completion_flat(struct ccli *ccli, const char *match,
-				  int len, int nr_str, char **strings)
+				  int len, int nr_str, char **strings, int index)
 {
 	int i;
 
 	for (i = 0; i < nr_str; i++) {
 		if (strncmp(match, strings[i], len) == 0) {
-			echo_str(ccli, strings[i]);
+			echo_str(ccli, strings[i] + index);
 			echo(ccli, '\n');
 		}
 	}
 }
 
 static void print_completion(struct ccli *ccli, const char *match,
-			     int len, int nr_str, char **strings)
+			     int len, int nr_str, char **strings, int index)
 {
 	struct winsize w;
 	char *spaces;
@@ -64,14 +64,17 @@ static void print_completion(struct ccli *ccli, const char *match,
 	int i, x, c = 0;
 	int ret;
 
+	if (index > len)
+		index = len;
+
 	if (!ccli->in_tty)
 		return print_completion_flat(ccli, match, len,
-					     nr_str, strings);
+					     nr_str, strings, index);
 
 	ret = ioctl(ccli->in, TIOCGWINSZ, &w);
 	if (ret)
 		return print_completion_flat(ccli, match, len,
-					     nr_str, strings);
+					     nr_str, strings, index);
 	cols = w.ws_col;
 
 	for (i = 0, x = 0; i < nr_str; i++) {
@@ -89,6 +92,8 @@ static void print_completion(struct ccli *ccli, const char *match,
 	}
 	if (!max_len)
 		return;
+
+	max_len -= index;
 
 	spaces = malloc(max_len);
 	memset(spaces, ' ', max_len);
@@ -124,6 +129,7 @@ static void print_completion(struct ccli *ccli, const char *match,
 			if (x)
 				echo_str(ccli, "  ");
 			str = strings[x * rows + i];
+			str += index;
 			echo_str(ccli, str);
 			if (strlen(str) < max_len)
 				echo_str_len(ccli, spaces, max_len - strlen(str));
@@ -392,6 +398,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	char *match;
 	char delim;
 	int matched = 0;
+	int index;
 	int word;
 	int argc;
 	int mlen;
@@ -433,6 +440,8 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 					      match, &list, cmd->data);
 	}
 
+	index = ccli->display_index;
+
 	delim = match[mlen];
 	match[mlen] = '\0';
 	if (!delim)
@@ -454,7 +463,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 		if (tab && matched > 1) {
 			echo(ccli, '\n');
-			print_completion(ccli, match, mlen, cnt, list);
+			print_completion(ccli, match, mlen, cnt, list, index);
 		}
 		line_refresh(ccli, line, 0);
 
@@ -465,6 +474,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	free_argv(argc, argv);
  out:
+	ccli->display_index = 0;
 	line_cleanup(&copy);
 	line_refresh(ccli, ccli->line, 0);
 }

@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <ccli.h>
 
+#include "ccli-local.h"
+
 static int file_completion(struct ccli *ccli, char ***list,
 			   int *cnt, int mode, const char **ext, char *match,
 			   const char *dirname)
@@ -51,9 +53,14 @@ static int file_completion(struct ccli *ccli, char ***list,
 	 * length, then set dirname to ".", and search the current directory.
 	 * Note, this is only hit for seaching for local directories, as the
 	 * caller will set mode to be S_IFDIR.
+	 *
+	 * If there is a directory name, set the display_index to its length
+	 * to tell the printing output to skip over it.
 	 */
 	if (!dirname && dname[0] == '\0')
 		dirname = ".";
+	else
+		ccli->display_index = strlen(dname);
 
 	if (dirname)
 		dir = opendir(dirname);

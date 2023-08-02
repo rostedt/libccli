@@ -74,6 +74,7 @@ struct ccli {
 	int			out;
 	int			w_row;
 	int			nr_commands;
+	int			display_index;
 	struct command		*commands;
 	struct command		enter;
 	struct command		unknown;
