@@ -3,7 +3,8 @@ libccli(3)
 
 NAME
 ----
-ccli_register_completion - Add completions for the CLI interface for C programs
+ccli_register_completion, ccli_list_add, ccli_list_insert, ccli_list_add_printf,
+ccli_list_free - Add completions for the CLI interface for C programs
 
 SYNOPSIS
 --------
