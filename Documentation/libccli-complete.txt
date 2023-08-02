@@ -4,7 +4,7 @@ libccli(3)
 NAME
 ----
 ccli_register_completion, ccli_list_add, ccli_list_insert, ccli_list_add_printf,
-ccli_list_free - Add completions for the CLI interface for C programs
+ccli_list_free, ccli_file_completion - Add completions for the CLI interface for C programs
 
 SYNOPSIS
 --------
@@ -20,6 +20,9 @@ int *ccli_list_add*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]c
 int *ccli_list_insert*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, char pass:[*]word);
 int *ccli_list_add_printf*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, const char pass:[*]fmt, ...);
 void *ccli_list_free*(struct ccli pass:[*]ccli, char pass:[***]list, int cnt);
+
+int *ccli_file_completion*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, char pass:[*]match,
+                         int mode, const char pass:[*]PATH);
 --
 
 DESCRIPTION
@@ -102,6 +105,16 @@ _fmt_ and the parameters, similar to *snprintf*(3) does.
 and must not be manipulated by the application. The above functions will modify _cnt_
 and will depend on its content to keep the integrity of the algorithm.
 
+*ccli_file_completion()* is a helper function that can be used to simulate bash
+file completion. If the user entry word starts with a '/' it will start the completion
+at the root layer. If not, then it will look at the _PATH_ string. If the _PATH_ string
+exists, it will parse it similar to the PATH environment variable, to find the files.
+If the _PATH_ is empty or NULL, then it will only match absolute paths. The other
+completion callbacks can call this function to perform file completion. They simply
+need to pass the same _ccli_, and _list_ it was passed. It needs to pass a pointer
+to _cnt_ that holds the number of current items in _list_ (usually zero). If only
+files that are of a specific type or user permission is to be listed, then _mode_
+can be set to do so. If _mode_ is zero, it will list all files that match.
 
 RETURN VALUE
 ------------
@@ -149,6 +162,7 @@ static int do_the_completion(struct ccli *ccli, const char *command,
 {
 	const char *word1[] = { "a", "b", "c" };
 	const char *word2[] = { "1", "2", "3" };
+	const char *ext[] = { ".txt", NULL };
 	char **argv;
 	int argc;
 	int cnt = 0;
@@ -179,6 +193,10 @@ static int do_the_completion(struct ccli *ccli, const char *command,
 			/* The list now owns it. */
 			argv[1] = NULL;
 		}
+		break;
+	case 4:
+		/* Return ".txt" files or directory in this directory (or absolute) */
+		ret = ccli_file_completion(ccli, list, &cnt, match, 0, ext, ".");
 		break;
 	default:
 		ret = -1;

@@ -50,6 +50,9 @@ Completions:
 	int *ccli_list_add_printf*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, const char pass:[*]fmt, ...);
 	void *ccli_list_free*(struct ccli pass:[*]ccli, char pass:[***]list, int cnt);
 
+	int *ccli_file_completion*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, char pass:[*]match,
+                         int mode, const char pass:[*]PATH);
+
 Main loop:
 	int *ccli_loop*(struct ccli pass:[*]_ccli_);
 
