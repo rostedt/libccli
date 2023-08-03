@@ -5,6 +5,7 @@ include $(src)/scripts/utils.mk
 TARGETS :=
 TARGETS += read-file
 TARGETS += cli-history
+TARGETS += clish
 
 sdir := $(obj)/bin
 
