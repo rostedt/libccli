@@ -523,6 +523,26 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	delim = match[mlen];
 	match[mlen] = '\0';
 
+	/* Next do the default completion operation if command completion was not done */
+	if ((!cmd || !cmd->completion) && ccli->default_completion)
+		cnt = ccli->default_completion(ccli, NULL, copy.line, word,
+					       match, &list,
+					       ccli->default_completion_data);
+	if (delim == '\0')
+		delim = match[mlen];
+	match[mlen] = '\0';
+
+	/* End with the commands */
+	if (!word) {
+		/* This is a list of commands */
+		for (i = 0; i < ccli->nr_commands; i++)
+			ccli_list_add(ccli, &list, &cnt, ccli->commands[i].cmd);
+	}
+
+	if (delim == '\0')
+		delim = match[mlen];
+	match[mlen] = '\0';
+
 	do_completion_table(ccli, argc, argv, word, &list, &cnt, line, match);
 
 	index = ccli->display_index;
