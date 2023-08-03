@@ -45,7 +45,15 @@ static int file_completion(struct ccli *ccli, char ***list,
 
 	len = strlen(base);
 
-	/* dirname comes from the PATH list */
+	/*
+	 * dirname comes from the PATH list. If it is NULL and dname has no
+	 * length, then set dirname to ".", and search the current directory.
+	 * Note, this is only hit for seaching for local directories, as the
+	 * caller will set mode to be S_IFDIR.
+	 */
+	if (!dirname && dname[0] == '\0')
+		dirname = ".";
+
 	if (dirname)
 		dir = opendir(dirname);
 	else
@@ -124,13 +132,13 @@ int ccli_file_completion(struct ccli *ccli, char ***list, int *cnt, char *match,
 	int mlen = strlen(match);
 	int ret;
 
-	/* Handle absolute paths */
-	if (match[0] == '/')
+	/* If match is already a directory ... */
+	if (strchr(match, '/'))
 		return file_completion(ccli, list, cnt, mode, match, NULL);
 
-	/* If PATH is NULL we don't look at anything */
+	/* If PATH is NULL only look at current directories */
 	if (!PATH)
-		return 0;
+		return file_completion(ccli, list, cnt, S_IFDIR, match, NULL);
 
 	P = strdup(PATH);
 	if (!P)
