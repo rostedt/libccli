@@ -24,6 +24,24 @@ typedef int (*ccli_completion)(struct ccli *ccli, const char *command,
 typedef int (*ccli_interrupt)(struct ccli *ccli, const char *line,
 			      int pos, void *data);
 
+/**
+ * struct ccli_completion_table - table for completions
+ * @name: The name of the word to match (ignored for the root of the table)
+ * @completion: option function pointer to a completion function
+ * @data: The data to pass to the completion command.
+ * @options: The table for the sub commands (must exist and end with NULL)
+ *
+ * The root table is just a holder for the actual commands and the name is
+ * ignored. The @completion function is called if the name matches the previous
+ * word, and then the options are traversed.
+ */
+struct ccli_completion_table {
+	const char				*name;
+	ccli_completion				completion;
+	void					*data;
+	const struct ccli_completion_table	*options[];
+};
+
 struct ccli *ccli_alloc(const char *prompt, int in, int out);
 void ccli_free(struct ccli *ccli);
 
@@ -45,6 +63,10 @@ int ccli_register_command(struct ccli *ccli, const char *command_name,
 
 int ccli_register_completion(struct ccli *ccli, const char *command_name,
 			     ccli_completion completion);
+
+int ccli_register_completion_table(struct ccli *ccli,
+				   const struct ccli_completion_table *table,
+				   void *data);
 
 int ccli_register_default_completion(struct ccli *ccli, ccli_completion completion,
 				     void *data);
