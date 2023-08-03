@@ -2,9 +2,10 @@
 #ifndef __CCLI_LOCAL_H
 #define __CCLI_LOCAL_H
 
-#include <stdio.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
 #include <termios.h>
@@ -137,5 +138,10 @@ extern void history_free(struct ccli *ccli);
 extern void free_argv(int argc, char **argv);
 
 extern void do_completion(struct ccli *ccli, struct line_buf *line, int tab);
+
+typedef void (*test_crash_callback)(const void *);
+extern char test_name[BUFSIZ];
+extern char test_message[BUFSIZ];
+extern bool test_for_crash(test_crash_callback callback, const void *data);
 
 #endif

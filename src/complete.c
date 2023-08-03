@@ -5,8 +5,6 @@
  * Copyright (C) 2022 Steven Rostedt <rostedt@goodmis.org>
  */
 #include <sys/ioctl.h>
-#include <signal.h>
-#include <setjmp.h>
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -644,22 +642,11 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	line_refresh(ccli, ccli->line, 0);
 }
 
-static sigjmp_buf env;
-static char test_table_name[BUFSIZ];
-static char test_table_message[BUFSIZ];
-
-static void handler(int sig, siginfo_t *info, void *context)
+static void test_table(const void *data)
 {
-	fprintf(stderr, "ccli: %s\n", test_table_message);
-	fprintf(stderr, "      While processing '%s'\n", test_table_name);
-
-	siglongjmp(env, 1);
-}
-
-static void test_table(const struct ccli_completion_table *table)
-{
+	const struct ccli_completion_table *table = data;
 	const char *name = table->name;
-	int len = strlen(test_table_name);
+	int len = strlen(test_name);
 	int l = 0;
 	int i;
 
@@ -668,10 +655,10 @@ static void test_table(const struct ccli_completion_table *table)
 		name = "root";
 
 	if (len)
-		strncat(test_table_name, "->", BUFSIZ - 1);
-	strncat(test_table_name, name, BUFSIZ - 1);
+		strncat(test_name, "->", BUFSIZ - 1);
+	strncat(test_name, name, BUFSIZ - 1);
 
-	snprintf(test_table_message, BUFSIZ - 1,
+	snprintf(test_message, BUFSIZ - 1,
 		 "Completion table missing name or 'options' NULL terminator");
 
 	/* Touch all the names first */
@@ -682,7 +669,7 @@ static void test_table(const struct ccli_completion_table *table)
 	for (i = 0; table->options[i]; i++)
 		test_table(table->options[i]);
 
-	test_table_name[len] = '\0';
+	test_name[len] = '\0';
 }
 
 /**
@@ -702,9 +689,7 @@ int ccli_register_completion_table(struct ccli *ccli,
 				   const struct ccli_completion_table *table,
 				   void *data)
 {
-	struct sigaction act = { 0 };
-	struct sigaction oldact;
-	bool crashed = false;
+	bool crashed;
 
 	/*
 	 * Need to walk the completion table to make sure that
@@ -713,24 +698,7 @@ int ccli_register_completion_table(struct ccli *ccli,
 	 * later. If it crashes, it will report the problem, and not
 	 * register the table.
 	 */
-	act.sa_flags = SA_ONSTACK | SA_SIGINFO;
-	sigemptyset(&act.sa_mask);
-	act.sa_sigaction = &handler;
-
-	if (sigaction(SIGSEGV, &act, &oldact) < 0)
-		return -1;
-
-	if (sigsetjmp(env, 0) == 1) {
-		crashed = true;
-	} else {
-		/*
-		 * Make sure all data has options and is NULL.
-		 * If not, this should crash!
-		 */
-		test_table(table);
-	}
-
-	sigaction(SIGSEGV, &oldact, NULL);
+	crashed = test_for_crash(test_table, table);
 
 	if (crashed) {
 		errno = EFAULT;

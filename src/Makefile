@@ -9,6 +9,7 @@ OBJS += history.o
 OBJS += commands.o
 OBJS += complete.o
 OBJS += file.o
+OBJS += utils.o
 
 OBJS := $(OBJS:%.o=$(bdir)/%.o)
 DEPS := $(OBJS:$(bdir)/%.o=$(bdir)/.%.d)
