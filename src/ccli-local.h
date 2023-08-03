@@ -83,6 +83,8 @@ struct ccli {
 	char			read_buf[READ_BUF];
 };
 
+extern int execute(struct ccli *ccli, struct line_buf *line, bool hist);
+
 extern void clear_line(struct ccli *ccli, struct line_buf *line);
 extern int read_char(struct ccli *ccli);
 
