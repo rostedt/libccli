@@ -62,6 +62,18 @@ struct command {
 	void			*data;
 };
 
+/* Unused for now */
+struct ccli_option {
+	const char				*name;
+	ccli_option_callback			callback;
+};
+
+/* Unused for now */
+struct ccli_option_table {
+	void					*data;
+	struct ccli_option			*options[];
+};
+
 struct ccli {
 	struct termios		savein;
 	struct termios		saveout;
@@ -79,6 +91,8 @@ struct ccli {
 	struct command		*commands;
 	struct command		enter;
 	struct command		unknown;
+	const struct ccli_command_table *command_table;
+	void			*command_table_data;
 	const struct ccli_completion_table *completion_table;
 	void			*completion_table_data;
 	ccli_completion		default_completion;
