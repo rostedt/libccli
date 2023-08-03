@@ -175,6 +175,52 @@ static int find_matches(const char *match, int mlen, char **list, int cnt,
 	return matched;
 }
 
+static int do_strcmp(const void *A, const void *B)
+{
+	char * const *a = A;
+	char * const *b = B;
+
+	/* Handle NULLs (they go at the end) */
+	if (!*a || !*b) {
+		if (*a)
+			return -1;
+		return !!(*b);
+	}
+
+	return strcmp(*a, *b);
+}
+
+static int sort_unique(char **list, int cnt)
+{
+	int l;
+	int i;
+
+	qsort(list, cnt, sizeof(char *), do_strcmp);
+
+	for (l = 0, i = 0; i < cnt && list[i]; i++) {
+		if (!i)
+			continue;
+		if (strcmp(list[l], list[i]) != 0) {
+			l++;
+			if (l != i) {
+				free(list[l]);
+				list[l] = list[i];
+				list[i] = NULL;
+			}
+		}
+	}
+
+	if (l < cnt && list[l])
+		l++;
+
+	for (i = l; i < cnt; i++) {
+		free(list[i]);
+		list[i] = NULL;
+	}
+
+	return l;
+}
+
 static void insert_word(struct ccli *ccli, struct line_buf *line,
 			const char *word, int len)
 {
@@ -393,6 +439,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		delim = ' ';
 
 	if (cnt) {
+		cnt = sort_unique(list, cnt);
 		matched = find_matches(match, mlen, list, cnt, &last, &max);
 
 		if (matched == 1) {
