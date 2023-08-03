@@ -147,6 +147,10 @@ __hidden int read_char(struct ccli *ccli)
 					return CHAR_RIGHT;
 				case 'D':
 					return CHAR_LEFT;
+				case 'H':
+					return CHAR_HOME;
+				case 'F':
+					return CHAR_END;
 				case '1':
 				case '3':
 				case '4':
