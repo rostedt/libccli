@@ -336,7 +336,7 @@ void ccli_list_free(struct ccli *ccli, char ***list, int cnt)
 	*list = NULL;
 }
 
-static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
+__hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 {
 	struct command *cmd;
 	struct line_buf copy;
@@ -361,13 +361,13 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		return;
 
 	argc = line_parse(copy.line, &argv);
-	if (argc <= 0)
+	if (argc < 0)
 		goto out;
 
 	word = argc - 1;
 
 	/* If the cursor is on a space, there's no word to match */
-	if (ISSPACE(copy.line[copy.pos - 1])) {
+	if (word < 0 || ISSPACE(copy.line[copy.pos - 1])) {
 		match = empty;
 		word++;
 	} else {
@@ -376,10 +376,16 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	mlen = strlen(match);
 
-	cmd = find_command(ccli, argv[0]);
-	if (cmd && cmd->completion)
-		cnt = cmd->completion(ccli, cmd->cmd, copy.line, word,
-				      match, &list, cmd->data);
+	if (!word) {
+		/* This is a list of commands */
+		for (i = 0; i < ccli->nr_commands; i++)
+			ccli_list_add(ccli, &list, &cnt, ccli->commands[i].cmd);
+	} else {
+		cmd = find_command(ccli, argv[0]);
+		if (cmd && cmd->completion)
+			cnt = cmd->completion(ccli, cmd->cmd, copy.line, word,
+					      match, &list, cmd->data);
+	}
 
 	delim = match[mlen];
 	match[mlen] = '\0';
@@ -414,65 +420,4 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
  out:
 	line_cleanup(&copy);
 	line_refresh(ccli, ccli->line, 0);
-}
-
-__hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
-{
-	char **commands;
-	int matched;
-	int last;
-	int len;
-	int max;
-	int i = line->pos - 1;
-	int s;
-
-	/* Completion currently only works with the first word */
-	while (i >= 0 && !ISSPACE(line->line[i]))
-		i--;
-
-	s = i + 1;
-
-	while (i >= 0 && ISSPACE(line->line[i]))
-		i--;
-
-	/* If the pos was at the first word, i will be less than zero */
-	if (i >= 0)
-		return word_completion(ccli, line, tab);
-
-	len = line->pos - s;
-
-	commands = calloc(ccli->nr_commands, sizeof(char *));
-	if (!commands)
-		return;
-
-	for (i = 0; i < ccli->nr_commands; i++)
-		commands[i] = ccli->commands[i].cmd;
-
-	/* Find how many commands match */
-	matched = find_matches(line->line + s, len, commands,
-			       ccli->nr_commands, &last, &max);
-	if (!matched)
-		goto out_free;
-
-	if (matched == 1) {
-		/* select it */
-		i = strlen(commands[last]);
-		insert_word(ccli, line, commands[last] + len, i - len);
-		line_insert(line, ' ');
-		line_refresh(ccli, line, 0);
-		goto out_free;
-	}
-
-	/* list all the matches if tab was hit more than once */
-	if (!tab)
-		goto out_free;
-
-	echo(ccli, '\n');
-
-	print_completion(ccli, line->line + s, len,
-			  ccli->nr_commands, commands);
-
-	line_refresh(ccli, line, 0);
- out_free:
-	free(commands);
 }
