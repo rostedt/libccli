@@ -24,6 +24,31 @@ typedef int (*ccli_completion)(struct ccli *ccli, const char *command,
 typedef int (*ccli_interrupt)(struct ccli *ccli, const char *line,
 			      int pos, void *data);
 
+typedef int (*ccli_option_callback)(struct ccli *ccli, const char *option,
+				    const char *value, void *data);
+
+/* For future use */
+struct ccli_option_table;
+
+/**
+ * struct ccli_command_table - table for commands
+ * @name: The name of the command
+ * @command: a required callback to execute the command
+ * @data: Optional data to use for the callback command
+ * @options: Reserved for later use
+ * @subcommands: The table for the sub commands (must exist and end with NULL)
+ *
+ * The root table is just a holder for the actual commands and the @name and
+ * @command are ignored.
+ */
+struct ccli_command_table {
+	const char				*name;
+	ccli_command_callback			command;
+	void					*data;
+	const struct ccli_option_table		*options;
+	const struct ccli_command_table		*subcommands[];
+};
+
 /**
  * struct ccli_completion_table - table for completions
  * @name: The name of the word to match (ignored for the root of the table)
@@ -60,6 +85,10 @@ int ccli_page(struct ccli *ccli, int line, const char *fmt, ...);
 int ccli_loop(struct ccli *ccli);
 int ccli_register_command(struct ccli *ccli, const char *command_name,
 			  ccli_command_callback callback, void *data);
+
+int ccli_register_command_table(struct ccli *ccli,
+				const struct ccli_command_table *table,
+				void *data);
 
 int ccli_register_completion(struct ccli *ccli, const char *command_name,
 			     ccli_completion completion);

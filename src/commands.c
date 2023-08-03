@@ -259,3 +259,154 @@ int ccli_execute(struct ccli *ccli, const char *line_str, bool hist)
 	ccli->line = old_line;
 	return ret;
 }
+
+static void test_table(const void *data)
+{
+	const struct ccli_command_table *table = data;
+	const char *name = table->name;
+	int len = strlen(test_name);
+	int l = 0;
+	int i;
+
+	/* The root of the table does not need a name */
+	if (!name)
+		name = "root";
+
+	if (len)
+		strncat(test_name, "->", BUFSIZ - 1);
+	strncat(test_name, name, BUFSIZ - 1);
+
+	snprintf(test_message, BUFSIZ - 1,
+		 "Command table missing name or 'subcommands' NULL terminator");
+
+	/* Touch all the names first */
+	for (i = 0; table->subcommands[i]; i++)
+		l += strlen(table->subcommands[i]->name);
+
+	snprintf(test_message, BUFSIZ - 1,
+		 "Command table missing 'options' NULL terminator");
+
+	if (table->options) {
+		int clen;
+
+		/* Test the options too */
+
+		clen = strlen(test_name);
+		if (clen)
+			strncat(test_name, "->[options]", BUFSIZ - 1);
+
+		for (i = 0; table->options->options[i]; i++)
+			l += strlen(table->options->options[i]->name);
+
+		test_name[clen] = '\0';
+	}
+
+	/* Now recurse */
+	for (i = 0; table->subcommands[i]; i++)
+		test_table(table->subcommands[i]);
+
+	test_name[len] = '\0';
+}
+
+static const struct ccli_command_table *
+find_table_command(const struct ccli_command_table *command,
+		   int argc, char **argv, int *level)
+{
+	const struct ccli_command_table *subcommand;
+	int i;
+
+	if (argc > 1) {
+		for (i = 0; command->subcommands[i]; i++) {
+			subcommand = command->subcommands[i];
+			if (strcmp(subcommand->name, argv[1]) == 0) {
+				(*level)++;
+				return find_table_command(subcommand,
+							  argc - 1, argv + 1, level);
+			}
+		}
+	}
+	return command;
+}
+
+static int command_table_callback(struct ccli *ccli, const char *cmd,
+				  const char *line, void *data,
+				  int argc, char **argv)
+{
+	const struct ccli_command_table *command = data;
+	int level = 0;
+
+	command = find_table_command(command, argc, argv, &level);
+
+	data = ccli->command_table_data;
+
+	argc -= level;
+	argv += level;
+
+	return command->command(ccli, cmd, line, data, argc, argv);
+}
+
+static int test_commands(const struct ccli_command_table *table)
+{
+	int i;
+
+	if (!table->command)
+		return -1;
+
+	for (i = 0; table->subcommands[i]; i++) {
+		if (test_commands(table->subcommands[i]))
+			return -1;
+	}
+	return 0;
+}
+
+/**
+ * ccli_register_command_table - register a command table
+ * @ccli: The CLI descriptor to regsiter a command table to
+ * @table: The command table to assign.
+ * @data: data that can be passed if the individual commands do not have one.
+ */
+int ccli_register_command_table(struct ccli *ccli,
+				const struct ccli_command_table *table,
+				void *data)
+{
+	const struct ccli_command_table *command;
+	bool crashed;
+	int i;
+
+	/*
+	 * Need to walk the command table to make sure that
+	 * every element has populated the "subcommands" field with a
+	 * NULL terminated array. Check here to remove unwanted surprises
+	 * later. If it crashes, it will report the problem, and not
+	 * register the table.
+	 */
+	crashed = test_for_crash(test_table, table);
+
+	if (crashed) {
+		errno = EFAULT;
+		return -1;
+	}
+
+	/* Make sure all entries have a command */
+	if (test_commands(table)) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	ccli->command_table = table;
+	ccli->command_table_data = data;
+
+	/* If the top table has a command, the process it only */
+	if (table->name && table->command) {
+		ccli_register_command(ccli, table->name,
+				      command_table_callback, (void *)table);
+	}
+
+	/* Add all the commands to process */
+	for (i = 0; table->subcommands[i]; i++) {
+		command = table->subcommands[i];
+		ccli_register_command(ccli, command->name,
+				      command_table_callback, (void *)command);
+	}
+	return 0;
+}
