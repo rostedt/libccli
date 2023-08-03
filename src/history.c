@@ -240,6 +240,7 @@ __hidden int history_search(struct ccli *ccli, struct line_buf *line, int *pad)
 				ccli->current_line = i;
 				line_replace(line, hist);
 				line->pos = p - hist + search.len;
+				pos = i;
 			}
 			refresh(ccli, line, &search, &old_len, p);
 			break;
