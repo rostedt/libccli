@@ -86,6 +86,6 @@ int ccli_history_load_fd(struct ccli *ccli, const char *tag, int fd);
 int ccli_history_save_fd(struct ccli *ccli, const char *tag, int fd);
 
 int ccli_file_completion(struct ccli *ccli, char ***list, int *cnt, char *match,
-                         int mode, const char *PATH);
+                         int mode, const char **ext, const char *PATH);
 
 #endif

@@ -8,7 +8,8 @@
 #include <ccli.h>
 
 static int file_completion(struct ccli *ccli, char ***list,
-			   int *cnt, int mode, char *match, const char *dirname)
+			   int *cnt, int mode, const char **ext, char *match,
+			   const char *dirname)
 {
 	char filename[PATH_MAX];
 	struct dirent *dent;
@@ -79,12 +80,43 @@ static int file_completion(struct ccli *ccli, char ***list,
 		else
 			snprintf(filename, PATH_MAX, "%s%s", dname, dent->d_name);
 
-		if (stat(filename, &st) == 0) {
-			if ((st.st_mode & S_IFMT) == S_IFDIR)
-				type = S_IFDIR;
-			else if (mode_ifmt && (mode_ifmt != (st.st_mode & S_IFMT)))
+		/* File doesn't exist? */
+		if (stat(filename, &st) != 0)
+			continue;
+
+		/* Always match directories */
+		if ((st.st_mode & S_IFMT) == S_IFDIR) {
+			type = S_IFDIR;
+
+		/* If file type is given, check for it */
+		} else if (mode_ifmt && (mode_ifmt != (st.st_mode & S_IFMT))) {
+			continue;
+
+		/* If permissions are given, check for them */
+		} else if (mode_perm && !(mode_perm & st.st_mode)) {
 				continue;
-			else if (mode_perm && !(mode_perm & st.st_mode))
+
+		/* If file extensions are given, match them too */
+		} else if (ext) {
+			int dlen = strlen(dent->d_name);
+			bool found = false;
+			int i;
+
+			for (i = 0; !found && ext[i]; i++) {
+				int elen = strlen(ext[i]);
+				char *d;
+
+				if (dlen < elen)
+					continue;
+
+				d = dent->d_name + (dlen - elen);
+
+				if (strcmp(d, ext[i]) == 0) {
+					found = true;
+					break;
+				}
+			}
+			if (!found)
 				continue;
 		}
 
@@ -111,6 +143,7 @@ static int file_completion(struct ccli *ccli, char ***list,
  * @list: The list of files to return for the completion
  * @cnt: A pointer of the current number of list items.
  * @match: The current match string
+ * @ext: A NULL terminated list of possible file extensions (maybe NULL)
  * @PATH: An optional pointer to a PATH environment variable (may be NULL)
  *
  * This is a helper function for the use case of finding files within an
@@ -123,7 +156,7 @@ static int file_completion(struct ccli *ccli, char ***list,
  * Returns the number of items in list, or -1 on error.
  */
 int ccli_file_completion(struct ccli *ccli, char ***list, int *cnt, char *match,
-                         int mode, const char *PATH)
+                         int mode, const char **ext, const char *PATH)
 {
 	char *savetok;
 	char *tok;
@@ -134,11 +167,11 @@ int ccli_file_completion(struct ccli *ccli, char ***list, int *cnt, char *match,
 
 	/* If match is already a directory ... */
 	if (strchr(match, '/'))
-		return file_completion(ccli, list, cnt, mode, match, NULL);
+		return file_completion(ccli, list, cnt, mode, ext, match, NULL);
 
 	/* If PATH is NULL only look at current directories */
 	if (!PATH)
-		return file_completion(ccli, list, cnt, S_IFDIR, match, NULL);
+		return file_completion(ccli, list, cnt, S_IFDIR, ext, match, NULL);
 
 	P = strdup(PATH);
 	if (!P)
@@ -148,7 +181,7 @@ int ccli_file_completion(struct ccli *ccli, char ***list, int *cnt, char *match,
 		tok = strtok_r(tok, ":", &savetok);
 		if (!tok)
 			break;
-		ret = file_completion(ccli, list, cnt, mode, match, tok);
+		ret = file_completion(ccli, list, cnt, mode, ext, match, tok);
 		/* Handle modifying of the match end */
 		if (delim == '\0')
 			delim = match[mlen];
