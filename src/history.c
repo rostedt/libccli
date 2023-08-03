@@ -170,6 +170,7 @@ __hidden int history_search(struct ccli *ccli, struct line_buf *line, int *pad)
 	struct line_buf search;
 	char *hist;
 	char *p = NULL;
+	int save_current_line = ccli->current_line;
 	int old_len;
 	int pos = line->pos;
 	int min;
@@ -201,6 +202,7 @@ __hidden int history_search(struct ccli *ccli, struct line_buf *line, int *pad)
 		switch (ch) {
 		case CHAR_INTR:
 			echo_str(ccli, "^C\n");
+			ccli->current_line = save_current_line;
 			line_reset(line);
 			line_reset(&search);
 			goto out;
