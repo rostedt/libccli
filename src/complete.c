@@ -418,7 +418,6 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 {
-	struct command *command;
 	char **commands;
 	int matched;
 	int last;
@@ -457,9 +456,8 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	if (matched == 1) {
 		/* select it */
-		command = &ccli->commands[last];
-		i = strlen(command->cmd);
-		insert_word(ccli, line, command->cmd + len, i - len);
+		i = strlen(commands[last]);
+		insert_word(ccli, line, commands[last] + len, i - len);
 		line_insert(line, ' ');
 		line_refresh(ccli, line, 0);
 		goto out_free;
