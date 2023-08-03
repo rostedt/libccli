@@ -47,6 +47,7 @@ enum {
 	CHAR_BACKSPACE		= -25,
 	CHAR_REVERSE		= -26,
 	CHAR_IGNORE_START	= -27,
+	CHAR_INSERT		= -28,
 };
 
 struct command {

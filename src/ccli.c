@@ -152,6 +152,7 @@ __hidden int read_char(struct ccli *ccli)
 				case 'F':
 					return CHAR_END;
 				case '1':
+				case '2':
 				case '3':
 				case '4':
 				case '5':
@@ -180,6 +181,8 @@ __hidden int read_char(struct ccli *ccli)
 				switch (num) {
 				case 1:
 					return CHAR_HOME;
+				case 2:
+					return CHAR_INSERT;
 				case 3:
 					return CHAR_DEL;
 				case 4:
@@ -1016,7 +1019,9 @@ int ccli_loop(struct ccli *ccli)
 			line_right_word(&line);
 			refresh_line(ccli, &line, 0);
 			break;
-
+		case CHAR_INSERT:
+			/* Todo */
+			break;
 		default:
 			if (isprint(ch)) {
 				line_insert(&line, ch);
