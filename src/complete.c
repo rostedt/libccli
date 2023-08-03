@@ -4,8 +4,11 @@
  *
  * Copyright (C) 2022 Steven Rostedt <rostedt@goodmis.org>
  */
-#include <stdarg.h>
 #include <sys/ioctl.h>
+#include <signal.h>
+#include <setjmp.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 #include "ccli-local.h"
 
@@ -407,6 +410,59 @@ void ccli_list_free(struct ccli *ccli, char ***list, int cnt)
 	*list = NULL;
 }
 
+static void do_completion_table(struct ccli *ccli, int argc, char **argv, int word,
+				char ***list, int *cnt, struct line_buf *line,
+				char *match)
+{
+	const struct ccli_completion_table *table = ccli->completion_table;
+	struct line_buf copy;
+	struct command *cmd;
+	void *data;
+	int i, c;
+
+	if (!table)
+		return;
+
+	/* Iterate down finding the node that matches this word */
+	for (i = 0; i < word; i++) {
+		for (c = 0; table->options[c]; c++) {
+			const char *name = table->options[c]->name;
+			if (strcmp(argv[i], name) == 0)
+				break;
+		}
+		if (!table->options[c])
+			break;
+		table = table->options[c];
+	}
+
+	/* Always call the completion callback for a matched node */
+	if (table->completion) {
+		int ret;
+
+		data = ccli->completion_table_data;
+		cmd = find_command(ccli, argv[0]);
+		if (cmd && cmd->data)
+			data = cmd->data;
+
+		/* The callback may mess with the line */
+		ret = line_copy(&copy, line, line->pos);
+		if (ret >= 0)
+			ret = table->completion(ccli, argv[0], copy.line, word,
+						match, list, data);
+		if (ret > 0)
+			*cnt += ret;
+		line_cleanup(&copy);
+	}
+
+	/* Add the options only if we are at the next word to find */
+	if (i != word)
+		return;
+
+	for (c = 0; table->options[c]; c++)
+		ccli_list_add(ccli, list, cnt, table->options[c]->name);
+
+}
+
 __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 {
 	struct command *cmd = NULL;
@@ -464,7 +520,17 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		cnt = ccli->default_completion(ccli, NULL, copy.line, word,
 					       match, &list,
 					       ccli->default_completion_data);
+
+	/* As match may be read again, need to put it back together*/
 	delim = match[mlen];
+	match[mlen] = '\0';
+
+	do_completion_table(ccli, argc, argv, word, &list, &cnt, line, match);
+
+	index = ccli->display_index;
+
+	if (delim == '\0')
+		delim = match[mlen];
 	match[mlen] = '\0';
 	if (!delim)
 		delim = ' ';
@@ -510,4 +576,103 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	ccli->display_index = 0;
 	line_cleanup(&copy);
 	line_refresh(ccli, ccli->line, 0);
+}
+
+static sigjmp_buf env;
+static char test_table_name[BUFSIZ];
+static char test_table_message[BUFSIZ];
+
+static void handler(int sig, siginfo_t *info, void *context)
+{
+	fprintf(stderr, "ccli: %s\n", test_table_message);
+	fprintf(stderr, "      While processing '%s'\n", test_table_name);
+
+	siglongjmp(env, 1);
+}
+
+static void test_table(const struct ccli_completion_table *table)
+{
+	const char *name = table->name;
+	int len = strlen(test_table_name);
+	int l = 0;
+	int i;
+
+	/* The root of the completion table does not need a name */
+	if (!name)
+		name = "root";
+
+	if (len)
+		strncat(test_table_name, "->", BUFSIZ - 1);
+	strncat(test_table_name, name, BUFSIZ - 1);
+
+	snprintf(test_table_message, BUFSIZ - 1,
+		 "Completion table missing name or 'options' NULL terminator");
+
+	/* Touch all the names first */
+	for (i = 0; table->options[i]; i++)
+		l += strlen(table->options[i]->name);
+
+	/* Now recurse */
+	for (i = 0; table->options[i]; i++)
+		test_table(table->options[i]);
+
+	test_table_name[len] = '\0';
+}
+
+/**
+ * ccli_register_completion_table - register a completion table
+ * @ccli: The CLI descriptor to regsiter a completion table to
+ * @table: The completion table to assign.
+ * @data: data that can be passed if the command does not have one.
+ *
+ * The @table is the root to hold other completions, and its name is ignored.
+ * Each entry in the table must have its options array end with NULL. Even
+ * if it is a leaf node and has no more children.
+ *
+ * The completion field of an entry will be called if its name matched on
+ * the previous word.
+ */
+int ccli_register_completion_table(struct ccli *ccli,
+				   const struct ccli_completion_table *table,
+				   void *data)
+{
+	struct sigaction act = { 0 };
+	struct sigaction oldact;
+	bool crashed = false;
+
+	/*
+	 * Need to walk the completion table to make sure that
+	 * every element has populated the "options" field with a
+	 * NULL terminated array. Check here to remove unwanted surprises
+	 * later. If it crashes, it will report the problem, and not
+	 * register the table.
+	 */
+	act.sa_flags = SA_ONSTACK | SA_SIGINFO;
+	sigemptyset(&act.sa_mask);
+	act.sa_sigaction = &handler;
+
+	if (sigaction(SIGSEGV, &act, &oldact) < 0)
+		return -1;
+
+	if (sigsetjmp(env, 0) == 1) {
+		crashed = true;
+	} else {
+		/*
+		 * Make sure all data has options and is NULL.
+		 * If not, this should crash!
+		 */
+		test_table(table);
+	}
+
+	sigaction(SIGSEGV, &oldact, NULL);
+
+	if (crashed) {
+		errno = EFAULT;
+		return -1;
+	}
+
+	ccli->completion_table = table;
+	ccli->completion_table_data = data;
+
+	return 0;
 }
