@@ -3,7 +3,7 @@ libccli(3)
 
 NAME
 ----
-ccli_register_completion, ccli_list_add, ccli_list_insert, ccli_list_add_printf,
+ccli_register_completion, ,ccli_register_default_completion, ccli_list_add, ccli_list_insert, ccli_list_add_printf,
 ccli_list_free, ccli_file_completion - Add completions for the CLI interface for C programs
 
 SYNOPSIS
@@ -15,6 +15,9 @@ SYNOPSIS
 int *ccli_register_completion*(struct ccli pass:[*]_ccli_, const char pass:[*]_command_name_,
 			  int (pass:[*]_completion_)(struct ccli pass:[*], const char pass:[*], const char pass:[*],
 						   int, char pass:[*], char pass:[***], void pass:[*]));
+
+int *ccli_register_default_completion*(struct ccli pass:[*]_ccli_, ccli_completion _completion_,
+				     void pass:[*]_data);
 
 int *ccli_list_add*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, const char pass:[*]word);
 int *ccli_list_insert*(struct ccli pass:[*]ccli, char pass:[***]list, int pass:[*]cnt, char pass:[*]word);
@@ -90,6 +93,10 @@ space behind it. To change this behavior, and add something other than a space
 (for example a '/'), the _match_ parameter can have its ending nul '\0' character
 replaced with the character to append. If it is replaced with CCLI_NOSPACE, then
 nothing will be appended to the matched word.
+
+*ccli_register_default_completion()* can be used to be called if no commands match.
+The _completion_ callback will get called for the given _ccli_, with _data_ as the
+data parameter.
 
 *ccli_list_add()* will make a copy of the passed in _word_ and add it to the _list_.
 
@@ -207,6 +214,20 @@ static int do_the_completion(struct ccli *ccli, const char *command,
 	return ret;
 }
 
+static int default_completion(struct ccli *ccli, const char *command,
+			      const char *line, int word, char *match,
+			      char ***list, void *data)
+{
+	const char *msg = data;
+	int cnt = 0;
+	int ret = 0;
+
+	if (strncmp(match, "hello", strlen(match)) == 0)
+		ret = ccli_list_add(ccli, list, &cnt, msg);
+
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	struct ccli *ccli;
@@ -216,6 +237,8 @@ int main(int argc, char **argv)
 	ccli_register_command(ccli, "do", do_it, NULL);
 
 	ccli_register_completion(ccli, "do", do_the_completion);
+
+	ccli_register_default_completion(ccli, default_completion, "hello-my-friend");
 
 	ccli_loop(ccli);
 

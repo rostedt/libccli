@@ -78,6 +78,8 @@ struct ccli {
 	struct command		*commands;
 	struct command		enter;
 	struct command		unknown;
+	ccli_completion		default_completion;
+	void			*default_completion_data;
 	ccli_interrupt		interrupt;
 	void			*interrupt_data;
 	char			*prompt;

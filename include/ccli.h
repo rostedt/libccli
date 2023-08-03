@@ -44,6 +44,9 @@ int ccli_register_command(struct ccli *ccli, const char *command_name,
 int ccli_register_completion(struct ccli *ccli, const char *command_name,
 			     ccli_completion completion);
 
+int ccli_register_default_completion(struct ccli *ccli, ccli_completion completion,
+				     void *data);
+
 int ccli_register_default(struct ccli *ccli, ccli_command_callback callback,
 			  void *data);
 

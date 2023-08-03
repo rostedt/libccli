@@ -40,6 +40,25 @@ int ccli_register_completion(struct ccli *ccli, const char *command_name,
 	return 0;
 }
 
+/**
+ * ccli_register_default_completion - Register a completion to do for unknown commmands
+ * @ccli: The CLI descriptor to register the default completion
+ * @completion: The completion function to call for unknown commands
+ * @data: The data to pass to that completion.
+ *
+ * Have @completion be called for the first word parsing that doesn't have a
+ * command registered for it.
+ *
+ * Returns 0 on success and -1 on error.
+ */
+int ccli_register_default_completion(struct ccli *ccli, ccli_completion completion,
+				     void *data)
+{
+	ccli->default_completion = completion;
+	ccli->default_completion_data = data;
+	return 0;
+}
+
 static void print_completion_flat(struct ccli *ccli, const char *match,
 				  int len, int nr_str, char **strings, int index)
 {
@@ -390,7 +409,7 @@ void ccli_list_free(struct ccli *ccli, char ***list, int cnt)
 
 __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 {
-	struct command *cmd;
+	struct command *cmd = NULL;
 	struct line_buf copy;
 	char **list = NULL;
 	char empty[1] = "";
@@ -429,49 +448,63 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	mlen = strlen(match);
 
-	if (!word) {
-		/* This is a list of commands */
-		for (i = 0; i < ccli->nr_commands; i++)
-			ccli_list_add(ccli, &list, &cnt, ccli->commands[i].cmd);
-	} else {
+	/* Do the registered completions first */
+	if (word) {
 		cmd = find_command(ccli, argv[0]);
 		if (cmd && cmd->completion)
 			cnt = cmd->completion(ccli, cmd->cmd, copy.line, word,
 					      match, &list, cmd->data);
 	}
 
-	index = ccli->display_index;
-
+	/*
+	 * Next do the default completion operation
+	 * if command completion was not done
+	 */
+	if ((!cmd || !cmd->completion) && ccli->default_completion)
+		cnt = ccli->default_completion(ccli, NULL, copy.line, word,
+					       match, &list,
+					       ccli->default_completion_data);
 	delim = match[mlen];
 	match[mlen] = '\0';
 	if (!delim)
 		delim = ' ';
 
-	if (cnt > 0) {
-		cnt = sort_unique(list, cnt);
-		matched = find_matches(match, mlen, list, cnt, &last, &max);
-
-		if (matched == 1) {
-			len = strlen(list[last]);
-			insert_word(ccli, line, list[last] + mlen, len - mlen);
-			if (delim != CCLI_NOSPACE)
-				line_insert(line, delim);
-		}
-
-		if (matched > 1 && max > mlen)
-			insert_word(ccli, line, list[last] + mlen, max - mlen);
-
-		if (tab && matched > 1) {
-			echo(ccli, '\n');
-			print_completion(ccli, match, mlen, cnt, list, index);
-		}
-		line_refresh(ccli, line, 0);
-
-		for (i = 0; i < cnt; i++)
-			free(list[i]);
-		free(list);
+	/* If nothing was matched yet */
+	if (cnt >= 0 && !word) {
+		/* Try matching with the list of commands */
+		for (i = 0; i < ccli->nr_commands; i++)
+			ccli_list_add(ccli, &list, &cnt, ccli->commands[i].cmd);
 	}
 
+	if (cnt < 0)
+		goto free_args;
+
+	index = ccli->display_index;
+
+	cnt = sort_unique(list, cnt);
+	matched = find_matches(match, mlen, list, cnt, &last, &max);
+
+	if (matched == 1) {
+		len = strlen(list[last]);
+		insert_word(ccli, line, list[last] + mlen, len - mlen);
+		if (delim != CCLI_NOSPACE)
+			line_insert(line, delim);
+	}
+
+	if (matched > 1 && max > mlen)
+		insert_word(ccli, line, list[last] + mlen, max - mlen);
+
+	if (tab && matched > 1) {
+		echo(ccli, '\n');
+		print_completion(ccli, match, mlen, cnt, list, index);
+	}
+	line_refresh(ccli, line, 0);
+
+	for (i = 0; i < cnt; i++)
+		free(list[i]);
+	free(list);
+
+ free_args:
 	free_argv(argc, argv);
  out:
 	ccli->display_index = 0;
