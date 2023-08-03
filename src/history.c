@@ -168,7 +168,8 @@ static void refresh(struct ccli *ccli, struct line_buf *line,
 __hidden int history_search(struct ccli *ccli, struct line_buf *line, int *pad)
 {
 	struct line_buf search;
-	char *hist;
+	char *last_hist = NULL;
+	char *hist = NULL;
 	char *p = NULL;
 	int save_current_line = ccli->current_line;
 	int old_len;
@@ -217,6 +218,7 @@ __hidden int history_search(struct ccli *ccli, struct line_buf *line, int *pad)
 			break;
 		case CHAR_REVERSE:
 			pos--;
+			last_hist = hist;
 			goto search;
 		default:
 			ret = line_insert(&search, ch);
@@ -231,6 +233,9 @@ __hidden int history_search(struct ccli *ccli, struct line_buf *line, int *pad)
 				hist = ccli->history[idx];
 				p = strstr(hist, search.line);
 				if (!p)
+					continue;
+				/* Skip duplicates */
+				if (last_hist && strcmp(last_hist, hist) == 0)
 					continue;
 				break;
 			}
