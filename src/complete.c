@@ -26,13 +26,13 @@ int ccli_register_completion(struct ccli *ccli, const char *command_name,
 	struct command *cmd;
 
 	if (!ccli || !command_name || !completion) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
 	cmd = find_command(ccli, command_name);
 	if (!cmd) {
-		errno = -ENODEV;
+		errno = ENODEV;
 		return -1;
 	}
 

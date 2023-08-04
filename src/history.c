@@ -298,7 +298,7 @@ int ccli_history_save_fd(struct ccli *ccli, const char *tag, int fd)
 	int i;
 
 	if (!ccli || !tag || fd < 0) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
@@ -500,7 +500,7 @@ int ccli_history_load_fd(struct ccli *ccli, const char *tag, int fd)
 	int i;
 
 	if (!ccli || !tag || fd < 0) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 

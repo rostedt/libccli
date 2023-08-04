@@ -586,7 +586,7 @@ int ccli_unregister_command(struct ccli *ccli, const char *command_name)
 	int cnt;
 
 	if (!ccli || !command_name) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
@@ -626,7 +626,7 @@ int ccli_register_command(struct ccli *ccli, const char *command_name,
 	char *cmd;
 
 	if (!ccli || !command_name || !callback) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
@@ -677,7 +677,7 @@ int ccli_register_default(struct ccli *ccli,
 			  ccli_command_callback callback, void *data)
 {
 	if (!ccli || !callback) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
@@ -703,7 +703,7 @@ int ccli_register_unknown(struct ccli *ccli,
 			  ccli_command_callback callback, void *data)
 {
 	if (!ccli || !callback) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
@@ -730,7 +730,7 @@ int ccli_register_interrupt(struct ccli *ccli, ccli_interrupt callback,
 			    void *data)
 {
 	if (!ccli || !callback) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
@@ -776,7 +776,7 @@ int ccli_line_inject(struct ccli *ccli, const char *str, int pos)
 	int i;
 
 	if (!ccli || !ccli->line || !str) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 

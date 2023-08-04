@@ -220,7 +220,7 @@ int ccli_line_parse(const char *line, char ***pargv)
 	int len;
 
 	if (!pargv) {
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
