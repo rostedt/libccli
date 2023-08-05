@@ -328,6 +328,28 @@ find_table_command(const struct ccli_command_table *command,
 	return command;
 }
 
+static int usage_command(struct ccli *ccli, const struct ccli_command_table *command,
+			 int argc, char **argv, int level)
+{
+	int i;
+
+	/* argc is level + 1 if the user did not add more than this command */
+	if (argc > level + 1)
+		ccli_printf(ccli, "Unknown option: %s\n", argv[level + 1]);
+
+	ccli_printf(ccli, "usage: ");
+	for (i = 0; i <= level; i++)
+		ccli_printf(ccli, "%s ", argv[i]);
+
+	for (i = 0; command->subcommands[i]; i++)
+		ccli_printf(ccli, "%s%s", i ? "|" : "",
+			    command->subcommands[i]->name);
+
+	ccli_printf(ccli, "\n");
+
+	return 0;
+}
+
 static int command_table_callback(struct ccli *ccli, const char *cmd,
 				  const char *line, void *data,
 				  int argc, char **argv)
@@ -336,6 +358,9 @@ static int command_table_callback(struct ccli *ccli, const char *cmd,
 	int level = 0;
 
 	command = find_table_command(command, argc, argv, &level);
+
+	if (!command->command)
+		return usage_command(ccli, command, argc, argv, level);
 
 	data = ccli->command_table_data;
 
@@ -349,7 +374,7 @@ static int test_commands(const struct ccli_command_table *table)
 {
 	int i;
 
-	if (!table->command)
+	if (!table->command && !table->subcommands[0])
 		return -1;
 
 	for (i = 0; table->subcommands[i]; i++) {
