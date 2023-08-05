@@ -119,6 +119,8 @@ int ccli_line_inject(struct ccli *ccli, const char *str, int pos);
 
 void ccli_line_refresh(struct ccli *ccli);
 
+int ccli_print_list(struct ccli *ccli, char **list, int cnt, int max_len);
+
 const char *ccli_history(struct ccli *ccli, int past);
 int ccli_history_save_fd(struct ccli *ccli, const char *name, int fd);
 
