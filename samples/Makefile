@@ -6,6 +6,7 @@ TARGETS :=
 TARGETS += read-file
 TARGETS += cli-history
 TARGETS += clish
+TARGETS += tables
 
 sdir := $(obj)/bin
 
