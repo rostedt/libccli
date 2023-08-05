@@ -73,16 +73,91 @@ static void print_completion_flat(struct ccli *ccli, const char *match,
 	}
 }
 
+static void print_string_list(struct ccli *ccli, char **list, int cnt, int max_len,
+			      struct winsize *w)
+{
+	char *spaces;
+	char *str;
+	int cols, rows;
+	int index;
+	int i, x, c = 0;
+
+	index = ccli->display_index;
+
+	if (!max_len) {
+		for (i = 0; i < cnt; i++) {
+			int len = strlen(list[i]);
+
+			if (len > max_len)
+				max_len = len;
+		}
+	}
+
+	spaces = malloc(max_len);
+	memset(spaces, ' ', max_len);
+
+	cols = w->ws_col;
+	cols = cols / (max_len + 2);
+	if (!cols)
+		cols = 1;
+
+	rows = (cnt + cols - 1) / cols;
+
+	for (i = 0; i < rows; i++) {
+		char ans = 0;;
+
+		if (check_for_ctrl_c(ccli))
+			break;
+
+		if (!c && i && !(i % (w->ws_row - 1))) {
+			ans = page_stop(ccli);
+			switch (ans) {
+			case 'q':
+				i = rows;
+				continue;
+			case 'c':
+				c = 1;
+				break;
+			}
+		}
+		for (x = 0; x < cols; x++) {
+			if (x * rows + i >= cnt)
+				continue;
+			if (x)
+				echo_str(ccli, "  ");
+			str = list[x * rows + i];
+			str += index;
+			echo_str(ccli, str);
+			if (strlen(str) < max_len)
+				echo_str_len(ccli, spaces, max_len - strlen(str));
+		}
+		echo(ccli, '\n');
+	}
+	free(spaces);
+
+}
+
+int ccli_print_list(struct ccli *ccli, char **list, int cnt, int max_len)
+{
+	struct winsize w;
+	int ret;
+
+	ret = ioctl(ccli->in, TIOCGWINSZ, &w);
+	if (ret < 0)
+		return -1;
+
+	print_string_list(ccli, list, cnt, max_len, &w);
+	return 0;
+}
+
 static void print_completion(struct ccli *ccli, const char *match,
 			     int len, int nr_str, char **strings, int index)
 {
 	struct winsize w;
-	char *spaces;
 	char *str;
 	int max_len = 0;
-	int cols, rows;
-	int i, x, c = 0;
 	int ret;
+	int i, x;
 
 	if (index > len)
 		index = len;
@@ -95,7 +170,6 @@ static void print_completion(struct ccli *ccli, const char *match,
 	if (ret)
 		return print_completion_flat(ccli, match, len,
 					     nr_str, strings, index);
-	cols = w.ws_col;
 
 	for (i = 0, x = 0; i < nr_str; i++) {
 		if (strncmp(match, strings[i], len) == 0) {
@@ -115,48 +189,7 @@ static void print_completion(struct ccli *ccli, const char *match,
 
 	max_len -= index;
 
-	spaces = malloc(max_len);
-	memset(spaces, ' ', max_len);
-
-	nr_str = x;
-
-	cols = cols / (max_len + 2);
-	if (!cols)
-		cols = 1;
-
-	rows = (nr_str + cols - 1) / cols;
-
-	for (i = 0; i < rows; i++) {
-		char ans = 0;;
-
-		if (check_for_ctrl_c(ccli))
-			break;
-
-		if (!c && i && !(i % (w.ws_row - 1))) {
-			ans = page_stop(ccli);
-			switch (ans) {
-			case 'q':
-				i = rows;
-				continue;
-			case 'c':
-				c = 1;
-				break;
-			}
-		}
-		for (x = 0; x < cols; x++) {
-			if (x * rows + i >= nr_str)
-				continue;
-			if (x)
-				echo_str(ccli, "  ");
-			str = strings[x * rows + i];
-			str += index;
-			echo_str(ccli, str);
-			if (strlen(str) < max_len)
-				echo_str_len(ccli, spaces, max_len - strlen(str));
-		}
-		echo(ccli, '\n');
-	}
-	free(spaces);
+	print_string_list(ccli, strings, nr_str, max_len, &w);
 }
 
 /*
