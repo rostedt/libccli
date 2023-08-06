@@ -574,6 +574,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 {
 	struct command *cmd = NULL;
 	struct line_buf copy;
+	const char *next = NULL;
 	char **list = NULL;
 	char empty[1] = "";
 	char **argv;
@@ -596,9 +597,28 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	if (ret < 0)
 		return;
 
-	argc = line_parse(copy.line, &argv);
-	if (argc < 0)
-		goto out;
+	for (;;) {
+		argc = line_parse(copy.line, &argv, ccli->delim, &next);
+		if (argc < 0)
+			goto out;
+		if (next && (next - copy.line) < copy.pos) {
+			int delta = next - copy.line;
+			int save_pos = copy.pos - delta;
+			copy.pos = delta;
+			line_del_beginning(&copy);
+			copy.pos = save_pos;
+			free_argv(argc, argv);
+			continue;
+		}
+		if (next) {
+			for (next--; next > copy.line && isspace(*next); next--)
+				;
+			next -= strlen(ccli->delim) - 1;
+			if (next >= copy.line)
+				copy.line[next - copy.line] = '\0';
+		}
+		break;
+	}
 
 	word = argc - 1;
 

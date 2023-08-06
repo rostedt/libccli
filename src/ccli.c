@@ -408,6 +408,7 @@ void ccli_free(struct ccli *ccli)
 
 	history_free(ccli);
 
+	free(ccli->delim);
 	free(ccli->commands);
 	free(ccli->temp_line);
 	free(ccli);

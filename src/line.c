@@ -237,22 +237,38 @@ __hidden int line_copy(struct line_buf *dst, struct line_buf *src, int len)
 	return 0;
 }
 
+static bool match_delim(const char *word, const char *delim, int dlen)
+{
+	return delim && strncmp(word, delim, dlen) == 0;
+}
+
 /**
- * ccli_line_parse - parse a string into its arguments
+ * ccli_line_parse_multi - parse a string into its arguments
  * @line: The string to parse
  * @pargv: A pointer to place the array of strings
+ * @delim: A delimiter to end the current parsing
+ * @next: Returns the start of the line to continue parsing
  *
  * Parse the @line into the arguments as the ccli would behave
  * when the user enters on the command line. @pargv is a pointer
  * to a string array that will be allocated and the arguments
  *  will be placed on it.
  *
+ * A @delim string can be used to stop the parsing, and the last
+ * value in @argv will not contain it.
+ *
+ * @next if not NULL will return the location in @line to run
+ * the parsing again. It does not point to the copied string used
+ * by @argv. If this is called multiple times, each time @argv
+ * must be freed with ccli_free_argv()
+ *
  * Returns the number of arguments that were parsed out of
  *    line or -1 on error. For all return values greater than zero
  *    @pargv should be freed with ccli_argv_free(), but it does
  *    not need to be called on the return of zero or less.
  */
-int ccli_line_parse(const char *line, char ***pargv)
+int ccli_line_parse_multi(const char *line, char ***pargv,
+			  const char *delim, const char **next)
 {
 	char **argv = NULL;
 	char *arg;
@@ -263,12 +279,16 @@ int ccli_line_parse(const char *line, char ***pargv)
 	char *u;
 	char q = 0;
 	int argc = 0;
+	int dlen = 0;
 	int len;
 
 	if (!pargv) {
 		errno = EINVAL;
 		return -1;
 	}
+
+	if (delim)
+		dlen = strlen(delim);
 
 	/* In case ccli_argv_free() gets called on a return of zero */
 	*pargv = NULL;
@@ -284,7 +304,10 @@ int ccli_line_parse(const char *line, char ***pargv)
 
 		word = p;
 
-		for ( ; !last && *p; p++) {
+		if (match_delim(word, delim, dlen))
+			break;
+
+		for ( ; !last && *p && (q || !match_delim(p, delim, dlen)); p++) {
 
 			switch (*p) {
 			case '\'':
@@ -296,7 +319,7 @@ int ccli_line_parse(const char *line, char ***pargv)
 				break;
 			case '\\':
 				p++;
-				if (!*p)
+				if (!*p || (!q && match_delim(p, delim, dlen)))
 					p--;
 				break;
 
@@ -357,6 +380,13 @@ int ccli_line_parse(const char *line, char ***pargv)
 		argv[argc] = NULL;
 	}
 
+	if (next && match_delim(p, delim, dlen)) {
+		p += strlen(delim);
+		while (ISSPACE(*p))
+			p++;
+		*next = p;
+	}
+
 	*pargv = argv;
 
 	return argc;
@@ -364,6 +394,26 @@ int ccli_line_parse(const char *line, char ***pargv)
  fail:
 	free_argv(argc, argv);
 	return -1;
+}
+
+/**
+ * ccli_line_parse - parse a string into its arguments
+ * @line: The string to parse
+ * @pargv: A pointer to place the array of strings
+ *
+ * Parse the @line into the arguments as the ccli would behave
+ * when the user enters on the command line. @pargv is a pointer
+ * to a string array that will be allocated and the arguments
+ *  will be placed on it.
+ *
+ * Returns the number of arguments that were parsed out of
+ *    line or -1 on error. For all return values greater than zero
+ *    @pargv should be freed with ccli_argv_free(), but it does
+ *    not need to be called on the return of zero or less.
+ */
+int ccli_line_parse(const char *line, char ***pargv)
+{
+	return ccli_line_parse_multi(line, pargv, NULL, NULL);
 }
 
 /**
@@ -384,9 +434,10 @@ void ccli_argv_free(char **argv)
 	free(argv);
 }
 
-__hidden int line_parse(const char *line, char ***pargv)
+__hidden int line_parse(const char *line, char ***pargv,
+			const char *delim, const char **next)
 {
-	return ccli_line_parse(line, pargv);
+	return ccli_line_parse_multi(line, pargv, delim, next);
 }
 
 __hidden void line_replace(struct line_buf *line, char *str)

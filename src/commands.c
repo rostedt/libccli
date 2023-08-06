@@ -188,14 +188,17 @@ int ccli_register_interrupt(struct ccli *ccli, ccli_interrupt callback,
 	return 0;
 }
 
-__hidden int execute(struct ccli *ccli, const char *line, bool hist)
+static int execute_line(struct ccli *ccli, const char *line, bool hist, const char **next)
 {
 	struct command *cmd;
 	char **argv;
 	int argc;
 	int ret = 0;
 
-	argc = line_parse(line, &argv);
+	if (next)
+		*next = NULL;
+
+	argc = line_parse(line, &argv, ccli->delim, next);
 	if (argc < 0) {
 		echo_str(ccli, "Error parsing command\n");
 		return 0;
@@ -226,6 +229,20 @@ __hidden int execute(struct ccli *ccli, const char *line, bool hist)
 	return ret;
 }
 
+__hidden int execute(struct ccli *ccli, const char *line, bool hist)
+{
+	const char *next;
+	int ret;
+
+	do {
+		ret = execute_line(ccli, line, hist, &next);
+		/* Only add history for the first line */
+		hist = false;
+		line = next;
+	} while (!ret && next);
+
+	return ret;
+}
 /**
  * ccli_execute - Execute a command from outside the loop
  * @ccli: The ccli descriptor
@@ -381,6 +398,29 @@ static int test_commands(const struct ccli_command_table *table)
 		if (test_commands(table->subcommands[i]))
 			return -1;
 	}
+	return 0;
+}
+
+/**
+ * ccli_register_command_delimiter - Register a delimiter for commands
+ * @ccli: The CLI descriptor to register a delimiter for.
+ * @delimiter: The text to use a a delimiter
+ *
+ * Register a delimiter that will be used to stop processing a line
+ * besides a newline. After a newline is entered, if the line has this
+ * delimiter, it will process the text up before the delimiter as a command
+ * and then the rest of the line until it hits another delimiter or the end
+ * of the line.
+ *
+ * This is similar to how the ";" is a delimiter to shell scripts.
+ *
+ * Returns 0 on success and -1 on error.
+ */
+int ccli_register_command_delimiter(struct ccli *ccli, const char *delim)
+{
+	ccli->delim = strdup(delim);
+	if (!delim)
+		return -1;
 	return 0;
 }
 

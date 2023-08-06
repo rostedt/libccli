@@ -104,6 +104,8 @@ int ccli_register_command_table(struct ccli *ccli,
 				const struct ccli_command_table *table,
 				void *data);
 
+int ccli_register_command_delimiter(struct ccli *ccli, const char *delim);
+
 int ccli_register_completion(struct ccli *ccli, const char *command_name,
 			     ccli_completion completion);
 
