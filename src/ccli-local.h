@@ -101,6 +101,7 @@ struct ccli {
 	void			*interrupt_data;
 	char			*prompt;
 	char			**history;
+	char			*delim;
 	unsigned char		read_start;
 	unsigned char		read_end;
 	char			read_buf[READ_BUF];
@@ -140,7 +141,8 @@ extern void line_del(struct line_buf *line);
 extern int line_del_word(struct line_buf *line);
 extern int line_del_beginning(struct line_buf *line);
 extern int line_copy(struct line_buf *dst, struct line_buf *src, int len);
-extern int line_parse(const char *line, char ***pargv);
+extern int line_parse(const char *line, char ***pargv,
+		      const char *delim, const char **next);
 extern void line_replace(struct line_buf *line, char *str);
 
 extern int history_add(struct ccli *ccli, const char *line);

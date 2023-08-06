@@ -164,6 +164,8 @@ int main (int argc, char **argv)
 	/* Load our own history */
 	ccli_history_load(ccli, CLISH_TAG);
 
+	ccli_register_command_delimiter(ccli, ";");
+
 	ccli_register_command(ccli, "lls", do_lls, NULL);
 	ccli_register_completion(ccli, "lls", lls_completion);
 
