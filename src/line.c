@@ -246,7 +246,7 @@ static bool match_delim(const char *word, const char *delim, int dlen)
  * ccli_line_parse_multi - parse a string into its arguments
  * @line: The string to parse
  * @pargv: A pointer to place the array of strings
- * @delim: A delimiter to end the current parsing
+ * @delim: A delimiter to end the current parsing (unlessed escaped by '\')
  * @next: Returns the start of the line to continue parsing
  *
  * Parse the @line into the arguments as the ccli would behave
@@ -270,6 +270,7 @@ static bool match_delim(const char *word, const char *delim, int dlen)
 int ccli_line_parse_multi(const char *line, char ***pargv,
 			  const char *delim, const char **next)
 {
+	bool escape = false;
 	char **argv = NULL;
 	char *arg;
 	char **v;
@@ -296,11 +297,21 @@ int ccli_line_parse_multi(const char *line, char ***pargv,
 	while (*p) {
 		bool last = false;
 
-		while (ISSPACE(*p))
+		/* escaped space is an argument! */
+		while (!escape && ISSPACE(*p))
 			p++;
 
 		if (!*p)
 			break;
+
+		if (!escape && *p == '\\') {
+			escape = true;
+			p++;
+			if (*p)
+				p++;
+			continue;
+		}
+		escape = false;
 
 		word = p;
 
