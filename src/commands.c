@@ -201,7 +201,7 @@ __hidden int execute(struct ccli *ccli, struct line_buf *line, bool hist)
 	int argc;
 	int ret = 0;
 
-	argc = line_parse(line, &argv);
+	argc = line_parse(line->line, &argv);
 	if (argc < 0) {
 		echo_str(ccli, "Error parsing command\n");
 		return 0;

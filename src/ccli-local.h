@@ -116,7 +116,7 @@ extern void line_del(struct line_buf *line);
 extern int line_del_word(struct line_buf *line);
 extern int line_del_beginning(struct line_buf *line);
 extern int line_copy(struct line_buf *dst, struct line_buf *src, int len);
-extern int line_parse(struct line_buf *line, char ***pargv);
+extern int line_parse(const char *line, char ***pargv);
 extern void line_replace(struct line_buf *line, char *str);
 
 extern int history_add(struct ccli *ccli, char *line);

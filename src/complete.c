@@ -360,7 +360,7 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	if (ret < 0)
 		return;
 
-	argc = line_parse(&copy, &argv);
+	argc = line_parse(copy.line, &argv);
 	if (argc <= 0)
 		goto out;
 

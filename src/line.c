@@ -354,9 +354,9 @@ void ccli_argv_free(char **argv)
 	free(argv);
 }
 
-__hidden int line_parse(struct line_buf *line, char ***pargv)
+__hidden int line_parse(const char *line, char ***pargv)
 {
-	return ccli_line_parse(line->line, pargv);
+	return ccli_line_parse(line, pargv);
 }
 
 __hidden void line_replace(struct line_buf *line, char *str)
