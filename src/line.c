@@ -156,7 +156,7 @@ __hidden int line_del_word(struct line_buf *line)
 
 	len = line->len - s;
 	line->len -= s - line->pos;
-	memmove(line->line + line->pos, line->line + s - 1, len);
+	memmove(line->line + line->pos, line->line + s, len);
 	memset(line->line + line->len, 0, s - line->pos);
 
 	return s - line->pos;
