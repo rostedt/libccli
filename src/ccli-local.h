@@ -20,6 +20,7 @@ struct line_buf {
 	int size;
 	int len;
 	int pos;
+	int start;	/* used for \ newline */
 };
 
 #define DEFAULT_HISTORY_MAX	256
@@ -49,6 +50,8 @@ enum {
 	CHAR_IGNORE_START	= -27,
 	CHAR_INSERT		= -28,
 	CHAR_DEL_BEGINNING	= -29,
+	/* CHAR_NEWLINE is to tell line_insert() a "\ and newline" was hit */
+	CHAR_NEWLINE		= -128,
 };
 
 struct command {
@@ -105,6 +108,7 @@ extern int line_init_str(struct line_buf *line, const char *str);
 extern void line_reset(struct line_buf *line);
 extern void line_cleanup(struct line_buf *line);
 extern int line_insert(struct line_buf *line, char ch);
+extern bool line_state_escaped(struct line_buf *line);
 extern void line_right(struct line_buf *line);
 extern void line_left(struct line_buf *line);
 extern void line_right_word(struct line_buf *line);

@@ -667,6 +667,12 @@ int ccli_loop(struct ccli *ccli)
  again:
 		if (ch != '\t')
 			tab = 0;
+
+		if (line_state_escaped(&line) && ch == '\n') {
+			ch = CHAR_NEWLINE;
+			echo_str(ccli, "\n> ");
+		}
+
 		switch (ch) {
 		case '\n':
 			echo(ccli, '\n');
@@ -751,7 +757,7 @@ int ccli_loop(struct ccli *ccli)
 			/* Todo */
 			break;
 		default:
-			if (isprint(ch)) {
+			if (ch == CHAR_NEWLINE || isprint(ch)) {
 				line_insert(&line, ch);
 				line_refresh(ccli, &line, 0);
 				break;

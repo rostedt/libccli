@@ -55,6 +55,7 @@ __hidden void line_reset(struct line_buf *line)
 	memset(line->line, 0, line->size);
 	line->len = 0;
 	line->pos = 0;
+	line->start = 0;
 }
 
 __hidden void line_cleanup(struct line_buf *line)
@@ -68,6 +69,24 @@ __hidden int line_insert(struct line_buf *line, char ch)
 	char *extend_line;
 	int len;
 
+	/*
+	 * In the case of '\' followed by a newline, the '\'
+	 * should no longer be part of the line string (although
+	 * it stays printed). And the "start" of the line becomes
+	 * the current position.
+	 */
+	if (ch == CHAR_NEWLINE) {
+		/* start a new line */
+		if (!line->len || line->line[line->len - 1] != '\\') {
+			fprintf(stderr, "Bad new line escape?\n");
+			return -1;
+		}
+		line->len--;
+		line->pos = line->len;
+		line->line[line->len] = '\0';
+		line->start = line->len;
+		return 0;
+	}
 	if (line->len == line->size) {
 		extend_line = realloc(line->line, line->size + BUFSIZ);
 		if (!extend_line)
@@ -87,6 +106,17 @@ __hidden int line_insert(struct line_buf *line, char ch)
 	return 0;
 }
 
+__hidden bool line_state_escaped(struct line_buf *line)
+{
+	int escape = 0;
+	int i;
+
+	for (i = line->len - 1; i >= 0 && line->line[i] == '\\'; i--)
+		escape ^= 1;
+
+	return escape;
+}
+
 __hidden void line_right(struct line_buf *line)
 {
 	if (line->pos < line->len)
@@ -95,13 +125,13 @@ __hidden void line_right(struct line_buf *line)
 
 __hidden void line_left(struct line_buf *line)
 {
-	if (line->pos)
+	if (line->pos > line->start)
 		line->pos--;
 }
 
 __hidden void line_home(struct line_buf *line)
 {
-	line->pos = 0;
+	line->pos = line->start;
 }
 
 __hidden void line_end(struct line_buf *line)
@@ -113,7 +143,7 @@ __hidden void line_backspace(struct line_buf *line)
 {
 	int len;
 
-	if (!line->pos)
+	if (line->pos == line->start)
 		return;
 
 	len = line->len - line->pos;
@@ -134,10 +164,10 @@ __hidden void line_right_word(struct line_buf *line)
 
 __hidden void line_left_word(struct line_buf *line)
 {
-	while (line->pos-- && !isalnum(line->line[line->pos]))
+	while ((line->pos-- > line->start) && !isalnum(line->line[line->pos]))
 		;
 
-	while (line->pos && isalnum(line->line[line->pos]))
+	while ((line->pos > line->start) && isalnum(line->line[line->pos]))
 		line->pos--;
 
 	if (!isalnum(line->line[line->pos]))
@@ -160,7 +190,7 @@ __hidden int line_del_beginning(struct line_buf *line)
 {
 	int s = line->pos;
 
-	if (!line->pos)
+	if (line->pos == line->start)
 		return 0;
 
 	line_home(line);
@@ -171,7 +201,7 @@ __hidden int line_del_word(struct line_buf *line)
 {
 	int s = line->pos;
 
-	if (!line->pos)
+	if (line->pos == line->start)
 		return 0;
 
 	line_left_word(line);
@@ -386,8 +416,11 @@ __hidden void line_refresh(struct ccli *ccli, struct line_buf *line, int pad)
 
 	echo(ccli, '\r');
 
-	echo_prompt(ccli);
-	echo_str(ccli, line->line);
+	if (line->start)
+		echo_str(ccli, "> ");
+	else
+		echo_prompt(ccli);
+	echo_str(ccli, line->line + line->start);
 	echo_str(ccli, padding);
 	while (pad--)
 		echo(ccli, '\b');
