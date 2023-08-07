@@ -191,6 +191,7 @@ int ccli_register_interrupt(struct ccli *ccli, ccli_interrupt callback,
 static int execute_line(struct ccli *ccli, const char *line, bool hist, const char **next)
 {
 	struct command *cmd;
+	struct alias *alias;
 	char **argv;
 	int argc;
 	int ret = 0;
@@ -209,16 +210,21 @@ static int execute_line(struct ccli *ccli, const char *line, bool hist, const ch
 					    ccli->enter.data,
 					    0, NULL);
 
-	cmd = find_command(ccli, argv[0]);
-
-	if (cmd) {
-		ret = cmd->callback(ccli, cmd->cmd,
-				    line, cmd->data,
-				    argc, argv);
+	alias = find_alias(ccli, argv[0]);
+	if (alias && !alias->exec) {
+		ret = execute_alias(ccli, alias, line, argc, argv);
 	} else {
-		ret = ccli->unknown.callback(ccli, argv[0], line,
-					     ccli->unknown.data,
-					     argc, argv);
+		cmd = find_command(ccli, argv[0]);
+
+		if (cmd) {
+			ret = cmd->callback(ccli, cmd->cmd,
+					    line, cmd->data,
+					    argc, argv);
+		} else {
+			ret = ccli->unknown.callback(ccli, argv[0], line,
+						     ccli->unknown.data,
+						     argc, argv);
+		}
 	}
 
 	free_argv(argc, argv);

@@ -74,6 +74,12 @@ struct ccli_option_table {
 	struct ccli_option			*options[];
 };
 
+struct alias {
+	char			*alias;
+	char			*command;
+	bool			exec;
+};
+
 struct ccli {
 	struct termios		savein;
 	struct termios		saveout;
@@ -87,10 +93,12 @@ struct ccli {
 	int			out;
 	int			w_row;
 	int			nr_commands;
+	int			nr_aliases;
 	int			display_index;
 	struct command		*commands;
 	struct command		enter;
 	struct command		unknown;
+	struct alias		*aliases;
 	const struct ccli_command_table *command_table;
 	void			*command_table_data;
 	const struct ccli_completion_table *completion_table;
@@ -118,6 +126,7 @@ extern void echo_str_len(struct ccli *ccli, char *str, int len);
 extern void echo_prompt(struct ccli *ccli);
 
 extern struct command *find_command(struct ccli *ccli, const char *cmd);
+extern struct alias *find_alias(struct ccli *ccli, const char *alias);
 
 extern bool check_for_ctrl_c(struct ccli *ccli);
 extern char page_stop(struct ccli *ccli);
@@ -153,6 +162,16 @@ extern int history_search(struct ccli *ccli, struct line_buf *line, int *pad);
 extern void free_argv(int argc, char **argv);
 
 extern void do_completion(struct ccli *ccli, struct line_buf *line, int tab);
+
+extern int exec_alias(struct ccli *ccli, const char *command,
+		      const char *line, void *data,
+		      int argc, char **argv);
+
+extern int exec_unalias(struct ccli *ccli, const char *command,
+			const char *line, void *data,
+			int argc, char **argv);
+extern int execute_alias(struct ccli *ccli, struct alias *alias,
+			 const char *line, int argc, char **argv);
 
 typedef void (*test_crash_callback)(const void *);
 extern char test_name[BUFSIZ];
