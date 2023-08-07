@@ -160,4 +160,23 @@ extern char test_name[BUFSIZ];
 extern char test_message[BUFSIZ];
 extern bool test_for_crash(test_crash_callback callback, const void *data);
 
+typedef int (*cache_iter_write_fn)(struct ccli *ccli, int fd, int idx, int cnt, void *data);
+typedef int (*cache_iter_read_fn)(struct ccli *ccli, char *line, int ret, int idx, int cnt, void *data);
+
+extern int cache_load_fd(struct ccli *ccli,
+			 const char *start_tag, const char *end_tag,
+			 const char *tag, int fd, cache_iter_read_fn callback,
+			 void *data);
+
+extern int cache_save_fd(struct ccli *ccli, const char *start_tag,
+			 const char *end_tag, const char *tag, int fd, int cnt,
+			 cache_iter_write_fn callback, void *data);
+
+extern int cache_save_file(struct ccli *ccli,
+			   const char *start_tag, const char *end_tag,
+			   const char *tag, const char *file, int cnt,
+			   cache_iter_write_fn callback, void *data);
+
+extern char *get_cache_file(const char *name);
+
 #endif
