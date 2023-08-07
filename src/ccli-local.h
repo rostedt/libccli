@@ -83,7 +83,7 @@ struct ccli {
 	char			read_buf[READ_BUF];
 };
 
-extern int execute(struct ccli *ccli, struct line_buf *line, bool hist);
+extern int execute(struct ccli *ccli, const char *line, bool hist);
 
 extern void clear_line(struct ccli *ccli, struct line_buf *line);
 extern int read_char(struct ccli *ccli);
@@ -119,7 +119,7 @@ extern int line_copy(struct line_buf *dst, struct line_buf *src, int len);
 extern int line_parse(const char *line, char ***pargv);
 extern void line_replace(struct line_buf *line, char *str);
 
-extern int history_add(struct ccli *ccli, char *line);
+extern int history_add(struct ccli *ccli, const char *line);
 extern int history_up(struct ccli *ccli, struct line_buf *line, int cnt);
 extern int history_down(struct ccli *ccli, struct line_buf *line, int cnt);
 extern int history_search(struct ccli *ccli, struct line_buf *line, int *pad);

@@ -670,7 +670,7 @@ int ccli_loop(struct ccli *ccli)
 		switch (ch) {
 		case '\n':
 			echo(ccli, '\n');
-			ret = execute(ccli, &line, true);
+			ret = execute(ccli, line.line, true);
 			if (ret)
 				break;
 			line_reset(&line);

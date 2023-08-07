@@ -194,21 +194,21 @@ int ccli_register_interrupt(struct ccli *ccli, ccli_interrupt callback,
 	return 0;
 }
 
-__hidden int execute(struct ccli *ccli, struct line_buf *line, bool hist)
+__hidden int execute(struct ccli *ccli, const char *line, bool hist)
 {
 	struct command *cmd;
 	char **argv;
 	int argc;
 	int ret = 0;
 
-	argc = line_parse(line->line, &argv);
+	argc = line_parse(line, &argv);
 	if (argc < 0) {
 		echo_str(ccli, "Error parsing command\n");
 		return 0;
 	}
 
 	if (!argc)
-		return ccli->enter.callback(ccli, "", line->line,
+		return ccli->enter.callback(ccli, "", line,
 					    ccli->enter.data,
 					    0, NULL);
 
@@ -216,10 +216,10 @@ __hidden int execute(struct ccli *ccli, struct line_buf *line, bool hist)
 
 	if (cmd) {
 		ret = cmd->callback(ccli, cmd->cmd,
-				    line->line, cmd->data,
+				    line, cmd->data,
 				    argc, argv);
 	} else {
-		ret = ccli->unknown.callback(ccli, argv[0], line->line,
+		ret = ccli->unknown.callback(ccli, argv[0], line,
 					     ccli->unknown.data,
 					     argc, argv);
 	}
@@ -227,7 +227,7 @@ __hidden int execute(struct ccli *ccli, struct line_buf *line, bool hist)
 	free_argv(argc, argv);
 
 	if (hist)
-		history_add(ccli, line->line);
+		history_add(ccli, line);
 
 	return ret;
 }
@@ -260,7 +260,7 @@ int ccli_execute(struct ccli *ccli, const char *line_str, bool hist)
 		return ret;
 
 	ccli->line = &line;
-	ret = execute(ccli, &line, hist);
+	ret = execute(ccli, line.line, hist);
 	line_cleanup(&line);
 	ccli->line = old_line;
 	return ret;

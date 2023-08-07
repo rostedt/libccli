@@ -21,7 +21,7 @@ static inline int history_idx(struct ccli *ccli, int idx)
 	return idx % ccli->history_max;
 }
 
-__hidden int history_add(struct ccli *ccli, char *line)
+__hidden int history_add(struct ccli *ccli, const char *line)
 {
 	char **lines;
 	int idx;
