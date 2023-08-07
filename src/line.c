@@ -144,22 +144,38 @@ __hidden void line_left_word(struct line_buf *line)
 		line->pos++;
 }
 
-__hidden int line_del_word(struct line_buf *line)
+static int del_words(struct line_buf *line, int old_pos)
 {
 	int len;
+
+	len = line->len - old_pos;
+	line->len -= old_pos - line->pos;
+	memmove(line->line + line->pos, line->line + old_pos, len);
+	memset(line->line + line->len, 0, old_pos - line->pos);
+
+	return old_pos - line->pos;
+}
+
+__hidden int line_del_beginning(struct line_buf *line)
+{
+	int s = line->pos;
+
+	if (!line->pos)
+		return 0;
+
+	line_home(line);
+	return del_words(line, s);
+}
+
+__hidden int line_del_word(struct line_buf *line)
+{
 	int s = line->pos;
 
 	if (!line->pos)
 		return 0;
 
 	line_left_word(line);
-
-	len = line->len - s;
-	line->len -= s - line->pos;
-	memmove(line->line + line->pos, line->line + s, len);
-	memset(line->line + line->len, 0, s - line->pos);
-
-	return s - line->pos;
+	return del_words(line, s);
 }
 
 __hidden void line_del(struct line_buf *line)

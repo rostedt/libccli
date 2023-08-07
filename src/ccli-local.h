@@ -48,6 +48,7 @@ enum {
 	CHAR_REVERSE		= -26,
 	CHAR_IGNORE_START	= -27,
 	CHAR_INSERT		= -28,
+	CHAR_DEL_BEGINNING	= -29,
 };
 
 struct command {
@@ -111,6 +112,7 @@ extern void line_end(struct line_buf *line);
 extern void line_backspace(struct line_buf *line);
 extern void line_del(struct line_buf *line);
 extern int line_del_word(struct line_buf *line);
+extern int line_del_beginning(struct line_buf *line);
 extern int line_copy(struct line_buf *dst, struct line_buf *src, int len);
 extern int line_parse(struct line_buf *line, char ***pargv);
 extern void line_replace(struct line_buf *line, char *str);

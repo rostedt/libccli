@@ -119,6 +119,8 @@ __hidden int read_char(struct ccli *ccli)
 			return CHAR_INTR;
 		case 18: /* DC2 */
 			return CHAR_REVERSE;
+		case 21: /* Ctrl^u */
+			return CHAR_DEL_BEGINNING;
 		case 27: /* ESC */
 			esc = true;
 			break;
@@ -977,6 +979,10 @@ int ccli_loop(struct ccli *ccli)
 			break;
 		case CHAR_DELWORD:
 			pad = line_del_word(&line);
+			refresh_line(ccli, &line, pad);
+			break;
+		case CHAR_DEL_BEGINNING:
+			pad = line_del_beginning(&line);
 			refresh_line(ccli, &line, pad);
 			break;
 		case CHAR_UP:
