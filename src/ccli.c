@@ -374,6 +374,8 @@ struct ccli *ccli_alloc(const char *prompt, int in, int out)
 
 	ccli_console_acquire(ccli);
 
+	ccli_register_command(ccli, "alias", exec_alias, NULL);
+	ccli_register_command(ccli, "unalias", exec_unalias, NULL);
 	ccli_register_command(ccli, "exit", exec_exit, NULL);
 	ccli->unknown.callback = unknown_default;
 	ccli->enter.callback = enter_default;
@@ -406,10 +408,16 @@ void ccli_free(struct ccli *ccli)
 	for (i = 0; i < ccli->nr_commands; i++)
 		free(ccli->commands[i].cmd);
 
+	for (i = 0; i < ccli->nr_aliases; i++) {
+		free(ccli->aliases[i].alias);
+		free(ccli->aliases[i].command);
+	}
+
 	history_free(ccli);
 
 	free(ccli->delim);
 	free(ccli->commands);
+	free(ccli->aliases);
 	free(ccli->temp_line);
 	free(ccli);
 }

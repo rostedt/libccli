@@ -163,6 +163,7 @@ int main (int argc, char **argv)
 
 	/* Load our own history */
 	ccli_history_load(ccli, CLISH_TAG);
+	ccli_alias_load(ccli, CLISH_TAG);
 
 	ccli_register_command_delimiter(ccli, ";");
 
@@ -178,6 +179,7 @@ int main (int argc, char **argv)
 	ccli_loop(ccli);
 
 	ccli_history_save(ccli, CLISH_TAG);
+	ccli_alias_save(ccli, CLISH_TAG);
 
 	ccli_free(ccli);
 
