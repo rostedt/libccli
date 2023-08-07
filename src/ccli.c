@@ -618,29 +618,6 @@ int ccli_line_inject(struct ccli *ccli, const char *str, int pos)
 	return ret;
 }
 
-__hidden void refresh_line(struct ccli *ccli, struct line_buf *line, int pad)
-{
-	char padding[pad + 3];
-	int len;
-
-	/* Just append two spaces */
-	pad += 2;
-
-	memset(padding, ' ', pad);
-	padding[pad] = '\0';
-
-	echo(ccli, '\r');
-
-	echo_prompt(ccli);
-	echo_str(ccli, line->line);
-	echo_str(ccli, padding);
-	while (pad--)
-		echo(ccli, '\b');
-
-	for (len = line->len; len > line->pos; len--)
-		echo(ccli, '\b');
-}
-
 /**
  * ccli_line_refresh: Refresh the displayed line.
  * @ccli: The CLI descriptor to refresh the command line for.
@@ -654,9 +631,8 @@ void ccli_line_refresh(struct ccli *ccli)
 	if (!ccli || !ccli->line)
 		return;
 
-	refresh_line(ccli, ccli->line, 0);
+	line_refresh(ccli, ccli->line, 0);
 }
-
 
 /**
  * ccli_loop - Execute a command loop for the user.
@@ -711,65 +687,65 @@ int ccli_loop(struct ccli *ccli)
 			clear_line(ccli, &line);
 			ch = history_search(ccli, &line, &pad);
 			pad = pad > line.len ? pad - line.len : 0;
-			refresh_line(ccli, &line, pad);
+			line_refresh(ccli, &line, pad);
 			if (ch != CHAR_INTR)
 				goto again;
 			break;
 		case CHAR_BACKSPACE:
 			line_backspace(&line);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_DEL:
 			line_del(&line);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_DELWORD:
 			pad = line_del_word(&line);
-			refresh_line(ccli, &line, pad);
+			line_refresh(ccli, &line, pad);
 			break;
 		case CHAR_DEL_BEGINNING:
 			pad = line_del_beginning(&line);
-			refresh_line(ccli, &line, pad);
+			line_refresh(ccli, &line, pad);
 			break;
 		case CHAR_UP:
 			history_up(ccli, &line, 1);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_DOWN:
 			history_down(ccli, &line, 1);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_LEFT:
 			line_left(&line);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_RIGHT:
 			line_right(&line);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_HOME:
 			line_home(&line);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_END:
 			line_end(&line);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_PAGEUP:
 			history_up(ccli, &line, DEFAULT_PAGE_SCROLL);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_PAGEDOWN:
 			history_down(ccli, &line, DEFAULT_PAGE_SCROLL);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_LEFT_WORD:
 			line_left_word(&line);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_RIGHT_WORD:
 			line_right_word(&line);
-			refresh_line(ccli, &line, 0);
+			line_refresh(ccli, &line, 0);
 			break;
 		case CHAR_INSERT:
 			/* Todo */
@@ -777,7 +753,7 @@ int ccli_loop(struct ccli *ccli)
 		default:
 			if (isprint(ch)) {
 				line_insert(&line, ch);
-				refresh_line(ccli, &line, 0);
+				line_refresh(ccli, &line, 0);
 				break;
 			}
 			dprint("unknown char '%d'\n", ch);

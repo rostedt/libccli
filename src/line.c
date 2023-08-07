@@ -372,3 +372,26 @@ __hidden void line_replace(struct line_buf *line, char *str)
 	line->len = len;
 	line->pos = len;
 }
+
+__hidden void line_refresh(struct ccli *ccli, struct line_buf *line, int pad)
+{
+	char padding[pad + 3];
+	int len;
+
+	/* Just append two spaces */
+	pad += 2;
+
+	memset(padding, ' ', pad);
+	padding[pad] = '\0';
+
+	echo(ccli, '\r');
+
+	echo_prompt(ccli);
+	echo_str(ccli, line->line);
+	echo_str(ccli, padding);
+	while (pad--)
+		echo(ccli, '\b');
+
+	for (len = line->len; len > line->pos; len--)
+		echo(ccli, '\b');
+}

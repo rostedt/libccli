@@ -98,7 +98,7 @@ extern struct command *find_command(struct ccli *ccli, const char *cmd);
 extern bool check_for_ctrl_c(struct ccli *ccli);
 extern char page_stop(struct ccli *ccli);
 
-extern void refresh_line(struct ccli *ccli, struct line_buf *line, int pad);
+extern void line_refresh(struct ccli *ccli, struct line_buf *line, int pad);
 
 extern int line_init(struct line_buf *line);
 extern int line_init_str(struct line_buf *line, const char *str);

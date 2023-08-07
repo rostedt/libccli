@@ -403,7 +403,7 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 			echo(ccli, '\n');
 			print_completion(ccli, match, mlen, cnt, list);
 		}
-		refresh_line(ccli, line, 0);
+		line_refresh(ccli, line, 0);
 
 		for (i = 0; i < cnt; i++)
 			free(list[i]);
@@ -413,7 +413,7 @@ static void word_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	free_argv(argc, argv);
  out:
 	line_cleanup(&copy);
-	refresh_line(ccli, ccli->line, 0);
+	line_refresh(ccli, ccli->line, 0);
 }
 
 __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
@@ -461,7 +461,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 		i = strlen(command->cmd);
 		insert_word(ccli, line, command->cmd + len, i - len);
 		line_insert(line, ' ');
-		refresh_line(ccli, line, 0);
+		line_refresh(ccli, line, 0);
 		goto out_free;
 	}
 
@@ -474,7 +474,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	print_completion(ccli, line->line + s, len,
 			  ccli->nr_commands, commands);
 
-	refresh_line(ccli, line, 0);
+	line_refresh(ccli, line, 0);
  out_free:
 	free(commands);
 }
