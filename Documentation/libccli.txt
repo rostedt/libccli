@@ -35,7 +35,7 @@ Registering commands:
 Commands:
 	int *ccli_line_parse*(const char pass:[*]_line_, char pass:[ ***]_argv_);
 	void *ccli_argv_free*(char pass:[**]_argv_);
-	void *ccli_line_reset*(struct ccli pass:[*]_ccli_);
+	void *ccli_line_clear*(struct ccli pass:[*]_ccli_);
 	int *ccli_line_inject*(struct ccli pass:[*]_ccli_, char pass:[*]string, int _pos_);
 	void *ccli_line_refresh*(struct ccli pass:[*]_ccli_);
 	const int *ccli_execute*(struct ccli pass:[*]_ccli_, const char pass:[*]_line_, bool _hist_);

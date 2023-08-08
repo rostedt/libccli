@@ -3,7 +3,7 @@ libccli(3)
 
 NAME
 ----
-ccli_line_parse, ccli_line_reset, ccli_line_inject, ccli_line_refresh,
+ccli_line_parse, ccli_line_clear, ccli_line_inject, ccli_line_refresh,
 ccli_argv_free, ccli_execute - Commands for libccli callbacks.
 
 SYNOPSIS
@@ -15,7 +15,7 @@ SYNOPSIS
 int *ccli_line_parse*(const char pass:[*]_line_, char pass:[ ***]_argv_);
 void *ccli_argv_free*(char pass:[**]_argv_);
 
-void *ccli_line_reset*(struct ccli pass:[*]_ccli_);
+void *ccli_line_clear*(struct ccli pass:[*]_ccli_);
 int *ccli_line_inject*(struct ccli pass:[*]_ccli_, char pass:[*]string, int _pos_);
 void *ccli_line_refresh*(struct ccli pass:[*]_ccli_);
 
@@ -36,7 +36,7 @@ words in the _line_ before the cursor. An address of a string array
 is passed to _argv_ and that will be allocated and the strings will be
 assigned from the line. It must then be freed with *ccli_argv_free()*.
 
-The *ccli_line_reset()* will clear the content in the command line.
+The *ccli_line_clear()* will clear the content in the command line.
 This can be useful for the interrupt callback of *ccli_register_interrupt*(3),
 if it needs to clear the line. This does not modify what is displayed
 to the user, but only what is registered on the command internally.
@@ -48,7 +48,7 @@ saved internally, at _pos_. If _pos_ is negative, then it will insert
 the text at the current location of the cursor. If _pos_ is greater than
 the string length of the current command line, it will just append it.
 
-If the interrupt callback uses *ccli_line_reset()* or *ccli_line_inject()*
+If the interrupt callback uses *ccli_line_clear()* or *ccli_line_inject()*
 it may want to call *ccli_line_refresh()*. This will update what is
 displayed to the user. It will restore the prompt and what is on the
 the command line internally.

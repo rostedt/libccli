@@ -271,7 +271,7 @@ SEE ALSO
 *ccli_vprintf*(3)
 *ccli_getchar*(3)
 *ccli_line_parse*(3),
-*ccli_line_reset*(3),
+*ccli_line_clear*(3),
 *ccli_line_inject*(3),
 *ccli_line_refresh*(3),
 *ccli_argv_free*(3),
