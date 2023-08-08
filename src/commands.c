@@ -4,12 +4,6 @@
  *
  * Copyright (C) 2022 Steven Rostedt <rostedt@goodmis.org>
  */
-#include <sys/ioctl.h>
-#include <signal.h>
-#include <setjmp.h>
-#include <stdarg.h>
-#include <stdio.h>
-
 #include "ccli-local.h"
 
 __hidden struct command *find_command(struct ccli *ccli, const char *cmd)
