@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <ctype.h>
 
 #include <CUnit/CUnit.h>
 #include <CUnit/Basic.h>
@@ -62,6 +63,63 @@ static void write_ccli(const char *fmt, ...)
 	CU_TEST(w == len);
 }
 
+static void dump_line(const char *line, int len)
+{
+	unsigned char ch;
+	int save_len = len;
+	int offset = 0;
+	int i;
+
+	for (i = 0; i < 8; i++, offset++) {
+		if (len) {
+			ch = line[offset];
+			printf("%02x ", ch);
+			len--;
+		} else
+			printf("   ");
+	}
+
+	printf(" ");
+	for (i = 0; i < 8; i++, offset++) {
+		if (len) {
+			ch = line[offset];
+			printf("%02x ", ch);
+			len--;
+		} else
+			printf("   ");
+	}
+
+	printf(" |");
+
+	offset -= 16;
+	len = save_len;
+
+	for (i = 0; i < 16; i++, offset++) {
+		if (len) {
+			ch = line[offset];
+			if (isprint(ch))
+				printf("%c", ch);
+			else
+				printf(".");
+			len--;
+		} else
+				printf(" ");
+	}
+	printf("|\n");
+}
+
+static void dump_lines(const char *line, int len)
+{
+	while (len) {
+		dump_line(line, len);
+		line += 16;
+		if (len > 16)
+			len -= 16;
+		else
+			len = 0;
+	}
+}
+
 /* Defined as a macro to show where it may have failed */
 #define read_ccli(match, exact)						\
 do {									\
@@ -74,11 +132,16 @@ do {									\
 	buf[0] = '\0';							\
 	r = read(in, buf, BUFSIZ);					\
 	buf[r] = '\0';							\
+	printf("%s\n[%d]\n", buf, r);					\
 	if (exact) {							\
 		CU_TEST(r == strlen(match));				\
+		if (r != strlen(match))					\
+			dump_lines(buf, r);				\
 		CU_TEST(strncmp(buf, match, strlen(match)) == 0);	\
 	} else {							\
 		CU_TEST(strstr(buf, match) != NULL);			\
+		if (!strstr(buf, match))				\
+			dump_lines(buf, r);				\
 	}								\
 } while (0)
 
@@ -182,6 +245,9 @@ static int command_run(struct ccli *ccli, const char *command,
 	CU_TEST(strcmp(buf, line) == 0);
 	CU_TEST(argc == conn->nr_words);
 	for (i = 0; i < argc; i++) {
+		CU_TEST(conn->words[i] != NULL);
+		if (conn->words[i] == NULL)
+			break;
 		CU_TEST(strcmp(conn->words[i], argv[i]) == 0);
 	}
 
@@ -197,6 +263,12 @@ static int register_commands(struct ccli *ccli)
 
 	r = ccli_register_command(ccli, "run", command_run, &ccli_connect);
 	CU_TEST(!r);
+	if (r)
+		return r;
+
+	r = ccli_register_command(ccli, "show", command_run, &ccli_connect);
+	CU_TEST(!r);
+
 	return r;
 }
 
@@ -226,6 +298,34 @@ static void test_ccli_command(void)
 			WORDS("run", "for", "you'r", "life!"), 4);
 	read_ccli(CCLI_RUN_COMPLETE, false);
 
+ 
+	write_ccli("exit\n");
+	wait_for_console();
+	destroy_ccli();
+
+	return;
+}
+
+static void test_ccli_completion(void)
+{
+	struct ccli *ccli;
+	int r;
+
+	if (create_ccli(CCLI_PROMPT) < 0)
+		return;
+
+	ccli = ccli_connect.ccli;
+
+	r = register_commands(ccli);
+	if (r)
+		return;
+
+	wait_for_console();
+
+	read_ccli(CCLI_PROMPT, true);
+
+	write_ccli("sh\t\t");
+	read_ccli(CCLI_PROMPT " show", false);
  
 	write_ccli("exit\n");
 	wait_for_console();
@@ -298,4 +398,6 @@ void test_ccli_lib(void)
 		    test_ccli_exit);
 	CU_add_test(suite, "ccli command",
 		    test_ccli_command);
+	CU_add_test(suite, "ccli completion",
+		    test_ccli_completion);
 }
