@@ -121,13 +121,18 @@ static void destroy_ccli(void)
 	close(ccli_connect.cons_out);
 }
 
+static void wait_for_console(void)
+{
+	pthread_barrier_wait(&pbarrier);
+}
+
 static void test_ccli_exit(void)
 {
 	if (create_ccli(CCLI_PROMPT) < 0)
 		return;
 
 	/* start the console */
-	pthread_barrier_wait(&pbarrier);
+	wait_for_console();
 
 	read_ccli(CCLI_PROMPT, true);
 
@@ -135,7 +140,7 @@ static void test_ccli_exit(void)
 
 	write_ccli("exit\n");
 
-	pthread_barrier_wait(&pbarrier);
+	wait_for_console();
 
 	CU_TEST(!ccli_connect.ret);
 
@@ -165,7 +170,7 @@ static int command_run(struct ccli *ccli, const char *command,
 	}
 
 	ccli_printf(ccli, CCLI_RUN_COMPLETE);
-	pthread_barrier_wait(&pbarrier);
+	wait_for_console();
 
 	return 0;
 }
@@ -185,10 +190,8 @@ static void test_ccli_command(void)
 	if (r)
 		return;
 
-	printf("%s:%d\n", __func__, __LINE__);
-	/* start the console */
-	pthread_barrier_wait(&pbarrier);
-	printf("%s:%d\n", __func__, __LINE__);
+	wait_for_console();
+
 
 	read_ccli(CCLI_PROMPT, true);
 
@@ -199,7 +202,7 @@ static void test_ccli_command(void)
 		ccli_connect.nr_words = 1;
 		ccli_connect.words = words;
 		write_ccli(ccli_connect.line);
-		pthread_barrier_wait(&pbarrier);
+		wait_for_console();
 	}
 	read_ccli(CCLI_RUN_COMPLETE, false);
 
@@ -211,13 +214,13 @@ static void test_ccli_command(void)
 		ccli_connect.nr_words = 4;
 		ccli_connect.words = words;
 		write_ccli(ccli_connect.line);
-		pthread_barrier_wait(&pbarrier);
+		wait_for_console();
 	}
 	read_ccli(CCLI_RUN_COMPLETE, false);
 
  
 	write_ccli("exit\n");
-	pthread_barrier_wait(&pbarrier);
+	wait_for_console();
 	destroy_ccli();
 
 	return;
@@ -228,7 +231,7 @@ static int test_suite_destroy(void)
 	void *cret;
 
 	ccli_connect.run = false;
-	pthread_barrier_wait(&pbarrier);
+	wait_for_console();
 	pthread_join(cons_thread, &cret);
 	ccli_free(ccli_connect.ccli);
 	return 0;
