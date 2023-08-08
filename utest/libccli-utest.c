@@ -27,8 +27,8 @@
 struct test_ccli_connect {
 	char			magic[sizeof(CCLI_MAGIC)];
 	struct ccli		*ccli;
-	char			*line;
-	char			**words;
+	const char		*line;
+	const char		**words;
 	int			nr_words;
 	int			ccli_in;
 	int			ccli_out;
@@ -44,7 +44,7 @@ static pthread_t cons_thread;
 static pthread_barrier_t pbarrier;
 
 __attribute__((__format__(printf, 1, 2)))
-static void write_ccli(char *fmt, ...)
+static void write_ccli(const char *fmt, ...)
 {
 	va_list ap;
 	char buf[BUFSIZ];
@@ -126,6 +126,22 @@ static void wait_for_console(void)
 	pthread_barrier_wait(&pbarrier);
 }
 
+static void __execute_command(const char *line, const char *words[], int nr_words)
+{
+	ccli_connect.line = line;
+	ccli_connect.nr_words = nr_words;
+	ccli_connect.words = words;
+	write_ccli(ccli_connect.line);
+	wait_for_console();
+}
+
+#define WORDS(x...)	{ x }
+#define execute_command(line, words, nr_words)				\
+	do {								\
+		const char *word_list[] = words;			\
+		__execute_command(line, word_list, nr_words);		\
+	} while (0)
+
 static void test_ccli_exit(void)
 {
 	if (create_ccli(CCLI_PROMPT) < 0)
@@ -195,27 +211,11 @@ static void test_ccli_command(void)
 
 	read_ccli(CCLI_PROMPT, true);
 
-	{
-		char *words[] = { "run" };
-
-		ccli_connect.line = "run\n";
-		ccli_connect.nr_words = 1;
-		ccli_connect.words = words;
-		write_ccli(ccli_connect.line);
-		wait_for_console();
-	}
+	execute_command("run\n", WORDS("run"), 1);
 	read_ccli(CCLI_RUN_COMPLETE, false);
 
-
-	{
-		char *words[] = { "run", "for", "you'r", "life!" };
-
-		ccli_connect.line = "run  for you\\'r 'life\\!'\n";
-		ccli_connect.nr_words = 4;
-		ccli_connect.words = words;
-		write_ccli(ccli_connect.line);
-		wait_for_console();
-	}
+	execute_command("run  for you\\'r 'life\\!'\n",
+			WORDS("run", "for", "you'r", "life!"), 4);
 	read_ccli(CCLI_RUN_COMPLETE, false);
 
  
