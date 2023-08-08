@@ -191,6 +191,15 @@ static int command_run(struct ccli *ccli, const char *command,
 	return 0;
 }
 
+static int register_commands(struct ccli *ccli)
+{
+	int r;
+
+	r = ccli_register_command(ccli, "run", command_run, &ccli_connect);
+	CU_TEST(!r);
+	return r;
+}
+
 static void test_ccli_command(void)
 {
 	struct ccli *ccli;
@@ -201,8 +210,7 @@ static void test_ccli_command(void)
 
 	ccli = ccli_connect.ccli;
 
-	r = ccli_register_command(ccli, "run", command_run, &ccli_connect);
-	CU_TEST(!r);
+	r = register_commands(ccli);
 	if (r)
 		return;
 
