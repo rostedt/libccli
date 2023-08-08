@@ -438,7 +438,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	if (!delim)
 		delim = ' ';
 
-	if (cnt) {
+	if (cnt > 0) {
 		cnt = sort_unique(list, cnt);
 		matched = find_matches(match, mlen, list, cnt, &last, &max);
 
