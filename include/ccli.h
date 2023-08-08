@@ -29,6 +29,8 @@ void ccli_free(struct ccli *ccli);
 
 int ccli_in(struct ccli *ccli);
 int ccli_out(struct ccli *ccli);
+void ccli_console_acquire(struct ccli *ccli);
+void ccli_console_release(struct ccli *ccli);
 
 __attribute__((__format__(printf, 2, 3)))
 int ccli_printf(struct ccli *ccli, const char *fmt, ...);

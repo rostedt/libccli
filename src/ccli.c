@@ -28,6 +28,48 @@ static void cleanup(struct ccli *ccli)
 	tcsetattr(ccli->out, TCSANOW, &ccli->saveout);
 }
 
+/**
+ * ccli_console_release - Put back the console
+ * @ccli: The CLI descriptor to put back
+ *
+ * Call this to put back the ccli input/output file handles
+ * back to what it was originally.
+ *
+ * This can be used for when the command is forked, and the
+ * child needs the original terminal. The ccli_console_release()
+ * is called, and when done, ccli_console_acquire() puts it
+ * back for ccli processing.
+ */
+void ccli_console_release(struct ccli *ccli)
+{
+	if (!ccli)
+		return;
+	cleanup(ccli);
+}
+
+/**
+ * ccli_console_acquire - Set the console back to be used by ccli
+ * @ccli: The CLI descriptor to set
+ *
+ * Call this to set the console back for ccli to process.
+ * This is usually called after a ccli_console_release().
+ *
+ * This can be used for when the command is forked, and the
+ * child needs the original terminal. The ccli_console_release()
+ * is called, and when done, ccli_console_acquire() puts it
+ * back for ccli processing.
+ */
+void ccli_console_acquire(struct ccli *ccli)
+{
+	struct termios ttyin;
+
+	memset(&ttyin, 0, sizeof(ccli->savein));
+	tcgetattr(ccli->in, &ttyin);
+	ttyin.c_lflag &= ~ICANON;
+	ttyin.c_lflag &= ~(ECHO | ECHONL | ISIG);
+	tcsetattr(ccli->in, TCSANOW, (void*)&ttyin);
+}
+
 static void inc_read_buf_start(struct ccli *ccli)
 {
 	if (ccli->read_start == READ_BUF - 1)
@@ -306,7 +348,6 @@ static int interrupt_default(struct ccli *ccli, const char *line,
  */
 struct ccli *ccli_alloc(const char *prompt, int in, int out)
 {
-	struct termios ttyin;
 	struct ccli *ccli;
 
 	ccli = calloc(1, sizeof(*ccli));
@@ -327,15 +368,11 @@ struct ccli *ccli_alloc(const char *prompt, int in, int out)
 
 	memset(&ccli->savein, 0, sizeof(ccli->savein));
 	memset(&ccli->saveout, 0, sizeof(ccli->saveout));
-	memset(&ttyin, 0, sizeof(ccli->savein));
 
 	tcgetattr(STDIN_FILENO, &ccli->savein);
 	tcgetattr(STDOUT_FILENO, &ccli->saveout);
 
-	tcgetattr(in, &ttyin);
-	ttyin.c_lflag &= ~ICANON;
-	ttyin.c_lflag &= ~(ECHO | ECHONL | ISIG);
-	tcsetattr(in, TCSANOW, (void*)&ttyin);
+	ccli_console_acquire(ccli);
 
 	ccli_register_command(ccli, "exit", exec_exit, NULL);
 	ccli->unknown.callback = unknown_default;
