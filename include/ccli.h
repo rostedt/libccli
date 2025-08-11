@@ -95,6 +95,9 @@ __attribute__((__format__(printf, 2, 3)))
 int ccli_printf(struct ccli *ccli, const char *fmt, ...);
 int ccli_vprintf(struct ccli *ccli, const char *fmt, va_list ap);
 
+__attribute__((__format__(printf, 2, 3)))
+int ccli_perror(struct ccli *ccli, const char *fmt, ...);
+
 __attribute__((__format__(printf, 3, 4)))
 int ccli_page(struct ccli *ccli, int line, const char *fmt, ...);
 

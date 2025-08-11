@@ -564,6 +564,32 @@ int ccli_printf(struct ccli *ccli, const char *fmt, ...)
 	return len;
 }
 
+/**
+ * ccli_perror - Write to ccli string then add perror output
+ * @ccli: The CLI descriptor to write to.
+ * @fmt: A printf() like format to write.
+ *
+ * Writes to the output descriptor of @ccli the content passed in
+ * as well as the perror string.
+ *
+ * Returns the number of characters written on success, and
+ *   -1 on error.
+ */
+int ccli_perror(struct ccli *ccli, const char *fmt, ...)
+{
+	va_list ap;
+	int len;
+
+	va_start(ap, fmt);
+	len = ccli_vprintf(ccli, fmt, ap);
+	va_end(ap);
+
+	if (len >= 0)
+		len += ccli_printf(ccli, "%s\n", strerror(errno));
+
+	return len;
+}
+
 __hidden char page_stop(struct ccli *ccli)
 {
 	char ans;
