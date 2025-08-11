@@ -461,6 +461,28 @@ void ccli_free(struct ccli *ccli)
 }
 
 /**
+ * ccli_prompt - Update the current prompt of the ccli descriptor
+ * @ccli: The ccli descriptor to update the prompt to
+ * @new_prompt: The new prompt to add to @ccli
+ *
+ * This adds @new_prompt to the @ccli.
+ *
+ * Returns: 0 on success, negative on error
+ */
+int ccli_prompt(struct ccli *ccli, const char *new_prompt)
+{
+	char *prompt = strdup(new_prompt);
+
+	if (!prompt)
+		return -1;
+
+	free(ccli->prompt);
+	ccli->prompt = prompt;
+
+	return 0;
+}
+
+/**
  * ccli_in - return the input file descriptor.
  * @ccli: The CLI descriptor to get the input file descriptor from.
  *

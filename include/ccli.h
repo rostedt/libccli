@@ -84,6 +84,8 @@ struct ccli_completion_table {
 struct ccli *ccli_alloc(const char *prompt, int in, int out);
 void ccli_free(struct ccli *ccli);
 
+int ccli_prompt(struct ccli *ccli, const char *new_prompt);
+
 int ccli_in(struct ccli *ccli);
 int ccli_out(struct ccli *ccli);
 void ccli_console_acquire(struct ccli *ccli);
