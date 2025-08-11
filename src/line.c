@@ -50,6 +50,26 @@ __hidden int line_init_str(struct line_buf *line, const char *str)
 	return 0;
 }
 
+/**
+ * line_init_start - Initialize a line_buf with a given start position
+ * @line: The line_buf to initialize
+ * @start: The start position to skip over on refresh
+ *
+ * Initilize the line with a given start position.
+ *
+ * Returns 0 on success and -1 on failure.
+ */
+__hidden int line_init_start(struct line_buf *line, int start)
+{
+	int ret = line_init(line);
+
+	if (ret)
+		return ret;
+
+	line->start_pos = start;
+	return 0;
+}
+
 __hidden void line_reset(struct line_buf *line)
 {
 	memset(line->line, 0, line->size);
@@ -235,6 +255,20 @@ __hidden int line_copy(struct line_buf *dst, struct line_buf *src, int len)
 	dst->len = len;
 
 	return 0;
+}
+
+/*
+ * Returns the current line string and removes it from the line.
+ * That is, the returned string needs to be freed and a line_cleanup(@line)
+ * will not free the returned string.
+ */
+__hidden char *line_string(struct line_buf *line)
+{
+	char *str = line->line;
+
+	line->line = NULL;
+	line_init(line);
+	return str;
 }
 
 static bool match_delim(const char *word, const char *delim, int dlen)
@@ -480,6 +514,8 @@ __hidden void line_refresh(struct ccli *ccli, struct line_buf *line, int pad)
 
 	if (line->start)
 		echo_str(ccli, "> ");
+	else if (line->start_pos)
+		skip_chars(ccli, line->start_pos);
 	else
 		echo_prompt(ccli);
 	echo_str(ccli, line->line + line->start);

@@ -98,18 +98,56 @@ static bool read_buf_full(struct ccli *ccli)
 	return ccli->read_end == READ_BUF - 1;
 }
 
+static void update_col_pos(struct ccli *ccli, int ch)
+{
+	switch (ch) {
+	case '\n':
+	case '\r':
+		ccli->col_pos = 0;
+		break;
+	default:
+		ccli->col_pos++;
+	}
+}
+
+#define SKIP_CHAR	"\033["
+__hidden int skip_chars(struct ccli *ccli, int skip)
+{
+	char *skip_str;
+	int len = sizeof(SKIP_CHAR) + 12;
+	int ret;
+
+	skip_str = malloc(len);
+	if (!skip_str)
+		return -1;
+	ret = snprintf(skip_str, len, "%s%dC", SKIP_CHAR, skip);
+	ret = write(ccli->out, skip_str, ret);
+	free(skip_str);
+	if (ret < 0)
+		return ret;
+	ccli->col_pos += skip;
+	return 0;
+}
+
 __hidden void echo(struct ccli *ccli, char ch)
 {
+	update_col_pos(ccli, ch);
 	write(ccli->out, &ch, 1);
 }
 
 __hidden int echo_str(struct ccli *ccli, char *str)
 {
+	for (int i = 0; str[i]; i++)
+		update_col_pos(ccli, str[i]);
+
 	return write(ccli->out, str, strlen(str));
 }
 
 __hidden void echo_str_len(struct ccli *ccli, char *str, int len)
 {
+	for (int i = 0; i < len; i++)
+		update_col_pos(ccli, str[i]);
+
 	write(ccli->out, str, len);
 }
 
@@ -678,6 +716,181 @@ void ccli_line_refresh(struct ccli *ccli)
 	line_refresh(ccli, ccli->line, 0);
 }
 
+/*
+ * Reads a line, if @command is false, then do not allow up and down
+ * or tab completions.
+ *
+ * Return 0 on success, non-zero on interrupt.
+ */
+static int get_line(struct ccli *ccli, struct line_buf *line, bool command)
+{
+	char ch;
+	int tab = 0;
+	int pad;
+	int ret = 0;
+
+	while (!ret) {
+
+		ch = read_char(ccli);
+		if (ch == CHAR_ERROR)
+			break;
+
+ again:
+		if (ch != '\t')
+			tab = 0;
+
+		if (line_state_escaped(line) && ch == '\n') {
+			ch = CHAR_NEWLINE;
+			echo_str(ccli, "\n> ");
+		}
+
+		switch (ch) {
+		case '\n':
+			echo(ccli, '\n');
+			return 0;
+		case '\t':
+			if (!command) {
+				line_insert(line, ch);
+				line_refresh(ccli, line, 0);
+				break;
+			}
+			do_completion(ccli, line, tab++);
+			break;
+		case CHAR_INTR:
+			ret = ccli->interrupt(ccli, line->line,
+					      line->pos, ccli->interrupt_data);
+			break;
+		case CHAR_REVERSE:
+			if (!command)
+				break;
+			clear_line(ccli, line);
+			ch = history_search(ccli, line, &pad);
+			pad = pad > line->len ? pad - line->len : 0;
+			line_refresh(ccli, line, pad);
+			if (ch != CHAR_INTR)
+				goto again;
+			break;
+		case CHAR_BACKSPACE:
+			line_backspace(line);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_DEL:
+			line_del(line);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_DELWORD:
+			pad = line_del_word(line);
+			line_refresh(ccli, line, pad);
+			break;
+		case CHAR_DEL_BEGINNING:
+			pad = line_del_beginning(line);
+			line_refresh(ccli, line, pad);
+			break;
+		case CHAR_UP:
+			if (!command)
+				break;
+			history_up(ccli, line, 1);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_DOWN:
+			if (!command)
+				break;
+			history_down(ccli, line, 1);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_LEFT:
+			line_left(line);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_RIGHT:
+			line_right(line);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_HOME:
+			line_home(line);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_END:
+			line_end(line);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_PAGEUP:
+			if (!command)
+				break;
+			history_up(ccli, line, DEFAULT_PAGE_SCROLL);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_PAGEDOWN:
+			if (!command)
+				break;
+			history_down(ccli, line, DEFAULT_PAGE_SCROLL);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_LEFT_WORD:
+			line_left_word(line);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_RIGHT_WORD:
+			line_right_word(line);
+			line_refresh(ccli, line, 0);
+			break;
+		case CHAR_INSERT:
+			/* Todo */
+			break;
+		default:
+			if (ch == CHAR_NEWLINE || isprint(ch)) {
+				line_insert(line, ch);
+				line_refresh(ccli, line, 0);
+				break;
+			}
+			dprint("unknown char '%d'\n", ch);
+		}
+	}
+	return 0;
+}
+
+/**
+ * ccli_getline - read from ccli stdin until '\n' is hit
+ * @ccli: The command line descriptor to read from
+ * @def: The default string to show on the line.
+ *
+ * Reads from ccli->in until a new line is hit.
+ * Note, it will only return printable characters,
+ * -1 on error or EOF and zero on Ctrl^C.
+ *
+ * Returns the printable input line from the user or NULL on Ctrl^C or
+ *   on error. The returned string must be freed with free()
+ */
+char *ccli_getline(struct ccli *ccli, const char *def)
+{
+	struct line_buf line;
+	char *str = NULL;
+	int ret;
+
+	ret = line_init_start(&line, ccli->col_pos);
+	if (ret)
+		return NULL;
+
+	if (def) {
+		ccli_printf(ccli, "%s", def);
+
+		for (int i = 0; i < def[i]; i++) {
+			ret = line_insert(&line, def[i]);
+			if (ret) {
+				line_cleanup(&line);
+				return NULL;
+			}
+		}
+	}
+
+	ret = get_line(ccli, &line, false);
+	if (!ret)
+		str = line_string(&line);
+	line_cleanup(&line);
+
+	return str;
+}
+
 /**
  * ccli_loop - Execute a command loop for the user.
  * @ccli: The CLI descriptor to execute on.
@@ -691,10 +904,7 @@ void ccli_line_refresh(struct ccli *ccli)
 int ccli_loop(struct ccli *ccli)
 {
 	struct line_buf line;
-	char ch;
-	int tab = 0;
 	int ret = 0;
-	int pad;
 
 	if (line_init(&line))
 		return -1;
@@ -704,109 +914,13 @@ int ccli_loop(struct ccli *ccli)
 	echo_prompt(ccli);
 
 	while (!ret) {
-		ch = read_char(ccli);
-		if (ch == CHAR_ERROR)
-			break;
-
- again:
-		if (ch != '\t')
-			tab = 0;
-
-		if (line_state_escaped(&line) && ch == '\n') {
-			ch = CHAR_NEWLINE;
-			echo_str(ccli, "\n> ");
-		}
-
-		switch (ch) {
-		case '\n':
-			echo(ccli, '\n');
+		ret = get_line(ccli, &line, true);
+		if (!ret) {
 			ret = execute(ccli, line.line, true);
 			if (ret)
 				break;
 			line_reset(&line);
 			echo_prompt(ccli);
-			break;
-		case '\t':
-			do_completion(ccli, &line, tab++);
-			break;
-		case CHAR_INTR:
-			ret = ccli->interrupt(ccli, line.line,
-					      line.pos, ccli->interrupt_data);
-			break;
-		case CHAR_REVERSE:
-			clear_line(ccli, &line);
-			ch = history_search(ccli, &line, &pad);
-			pad = pad > line.len ? pad - line.len : 0;
-			line_refresh(ccli, &line, pad);
-			if (ch != CHAR_INTR)
-				goto again;
-			break;
-		case CHAR_BACKSPACE:
-			line_backspace(&line);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_DEL:
-			line_del(&line);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_DELWORD:
-			pad = line_del_word(&line);
-			line_refresh(ccli, &line, pad);
-			break;
-		case CHAR_DEL_BEGINNING:
-			pad = line_del_beginning(&line);
-			line_refresh(ccli, &line, pad);
-			break;
-		case CHAR_UP:
-			history_up(ccli, &line, 1);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_DOWN:
-			history_down(ccli, &line, 1);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_LEFT:
-			line_left(&line);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_RIGHT:
-			line_right(&line);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_HOME:
-			line_home(&line);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_END:
-			line_end(&line);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_PAGEUP:
-			history_up(ccli, &line, DEFAULT_PAGE_SCROLL);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_PAGEDOWN:
-			history_down(ccli, &line, DEFAULT_PAGE_SCROLL);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_LEFT_WORD:
-			line_left_word(&line);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_RIGHT_WORD:
-			line_right_word(&line);
-			line_refresh(ccli, &line, 0);
-			break;
-		case CHAR_INSERT:
-			/* Todo */
-			break;
-		default:
-			if (ch == CHAR_NEWLINE || isprint(ch)) {
-				line_insert(&line, ch);
-				line_refresh(ccli, &line, 0);
-				break;
-			}
-			dprint("unknown char '%d'\n", ch);
 		}
 	}
 

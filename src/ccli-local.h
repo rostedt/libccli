@@ -21,6 +21,7 @@ struct line_buf {
 	int size;
 	int len;
 	int pos;
+	int start_pos;	/* used for skipping first part of line */
 	int start;	/* used for \ newline */
 };
 
@@ -96,6 +97,7 @@ struct ccli {
 	int			nr_commands;
 	int			nr_aliases;
 	int			display_index;
+	int			col_pos;
 	struct command		*commands;
 	struct command		enter;
 	struct command		unknown;
@@ -125,6 +127,7 @@ extern void echo(struct ccli *ccli, char ch);
 extern int echo_str(struct ccli *ccli, char *str);
 extern void echo_str_len(struct ccli *ccli, char *str, int len);
 extern void echo_prompt(struct ccli *ccli);
+extern int skip_chars(struct ccli *ccli, int skip);
 
 extern struct command *find_command(struct ccli *ccli, const char *cmd);
 extern struct alias *find_alias(struct ccli *ccli, const char *alias);
@@ -138,6 +141,7 @@ extern void line_refresh(struct ccli *ccli, struct line_buf *line, int pad);
 
 extern int line_init(struct line_buf *line);
 extern int line_init_str(struct line_buf *line, const char *str);
+extern int line_init_start(struct line_buf *line, int start);
 extern void line_reset(struct line_buf *line);
 extern void line_cleanup(struct line_buf *line);
 extern int line_insert(struct line_buf *line, char ch);
@@ -155,6 +159,7 @@ extern int line_del_beginning(struct line_buf *line);
 extern int line_copy(struct line_buf *dst, struct line_buf *src, int len);
 extern int line_parse(const char *line, char ***pargv,
 		      const char *delim, const char **next);
+extern char *line_string(struct line_buf *line);
 extern void line_replace(struct line_buf *line, char *str);
 
 extern int history_add(struct ccli *ccli, const char *line);

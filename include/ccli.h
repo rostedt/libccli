@@ -141,6 +141,7 @@ const char *ccli_history(struct ccli *ccli, int past);
 int ccli_history_save_fd(struct ccli *ccli, const char *name, int fd);
 
 int ccli_getchar(struct ccli *ccli);
+char *ccli_getline(struct ccli *ccli, const char *def);
 
 int ccli_execute(struct ccli *ccli, const char *line, bool hist);
 
