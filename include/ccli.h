@@ -49,6 +49,13 @@ struct ccli_command_table {
 	const struct ccli_command_table		*subcommands[];
 };
 
+#define CCLI_DEFINE_COMMAND(table, _name, _command, ...) \
+	const struct ccli_command_table table = {			\
+		.name = _name,						\
+		.command = _command,					\
+		.subcommands = {  __VA_ARGS__ __VA_OPT__(,)  NULL }	\
+	}
+
 /**
  * struct ccli_completion_table - table for completions
  * @name: The name of the word to match (ignored for the root of the table)
@@ -66,6 +73,13 @@ struct ccli_completion_table {
 	void					*data;
 	const struct ccli_completion_table	*options[];
 };
+
+#define CCLI_DEFINE_COMPLETION(table, _name, _completion, ...)	\
+	const struct ccli_completion_table table = {			\
+		.name = _name,						\
+		.completion = _completion,				\
+		.options = { __VA_ARGS__ __VA_OPT__(,) NULL }	\
+	}
 
 struct ccli *ccli_alloc(const char *prompt, int in, int out);
 void ccli_free(struct ccli *ccli);

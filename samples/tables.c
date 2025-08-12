@@ -312,56 +312,18 @@ static int close_dir_command(struct ccli *ccli, const char *command,
 	return 0;
 }
 
-const static struct ccli_command_table command_dump = {
-	.name = "dump",
-	.command = dump_command,
-	.subcommands = { NULL },
-};
-
-const static struct ccli_command_table command_list = {
-	.name = "list",
-	.command = list_command,
-	.subcommands = { NULL },
-};
-
-const static struct ccli_command_table command_open_file = {
-	.name = "file",
-	.command = open_file_command,
-	.subcommands = { NULL },
-};
-
-const static struct ccli_command_table command_open_dir = {
-	.name = "dir",
-	.command = open_dir_command,
-	.subcommands = { NULL },
-};
-
-const static struct ccli_command_table command_close_file = {
-	.name = "file",
-	.command = close_file_command,
-	.subcommands = { NULL },
-};
-
-const static struct ccli_command_table command_close_dir = {
-	.name = "dir",
-	.command = close_dir_command,
-	.subcommands = { NULL },
-};
-
-const static struct ccli_command_table command_open = {
-	.name = "open",
-	.subcommands = { &command_open_file, &command_open_dir, NULL },
-};
-
-const static struct ccli_command_table command_close = {
-	.name = "close",
-	.subcommands = { &command_close_file, &command_close_dir, NULL },
-};
-
-const static struct ccli_command_table command_main = {
-	.subcommands = { &command_open, &command_close,
-		&command_dump, &command_list, NULL },
-};
+static CCLI_DEFINE_COMMAND(command_dump, "dump", dump_command);
+static CCLI_DEFINE_COMMAND(command_list, "list", list_command);
+static CCLI_DEFINE_COMMAND(command_open_file, "file", open_file_command);
+static CCLI_DEFINE_COMMAND(command_open_dir, "dir", open_dir_command);
+static CCLI_DEFINE_COMMAND(command_close_file, "file", close_file_command);
+static CCLI_DEFINE_COMMAND(command_close_dir, "dir", close_dir_command);
+static CCLI_DEFINE_COMMAND(command_open, "open", NULL,
+		    &command_open_file, &command_open_dir);
+static CCLI_DEFINE_COMMAND(command_close, "close", NULL,
+		    &command_close_file, &command_close_dir);
+static CCLI_DEFINE_COMMAND(command_main, NULL, NULL,
+		    &command_open, &command_close, &command_dump, &command_list);
 
 static int list_items(struct ccli *ccli, char ***list, char **prev, int nr_prev, struct io_item *items)
 {
@@ -432,23 +394,10 @@ static int close_completion(struct ccli *ccli, const char *command,
 	return 0;
 }
 
-const static struct ccli_completion_table completion_close_file = {
-	.name = "file",
-	.completion = close_completion_file,
-	.options = { NULL },
-};
-
-const static struct ccli_completion_table completion_close_dir = {
-	.name = "dir",
-	.completion = close_completion_dir,
-	.options = { NULL },
-};
-
-const static struct ccli_completion_table completion_close = {
-	.name = "close",
-	.completion = close_completion,
-	.options = { &completion_close_file, &completion_close_dir, NULL }
-};
+static CCLI_DEFINE_COMPLETION(completion_close_file, "file", close_completion_file);
+static CCLI_DEFINE_COMPLETION(completion_close_dir, "dir", close_completion_dir);
+static CCLI_DEFINE_COMPLETION(completion_close, "close", close_completion,
+	&completion_close_file, &completion_close_dir);
 
 const int open_completion_file(struct ccli *ccli, const char *command,
 			 const char *line, int word, char *match,
@@ -468,22 +417,10 @@ const int open_completion_dir(struct ccli *ccli, const char *command,
 	return ccli_file_completion(ccli, list, &cnt, match, S_IFDIR, NULL, ".");
 }
 
-const static struct ccli_completion_table completion_open_file = {
-	.name = "file",
-	.completion = open_completion_file,
-	.options = { NULL },
-};
-
-const static struct ccli_completion_table completion_open_dir = {
-	.name = "dir",
-	.completion = open_completion_dir,
-	.options = { NULL },
-};
-
-const static struct ccli_completion_table completion_open = {
-	.name = "open",
-	.options = { &completion_open_file, &completion_open_dir, NULL }
-};
+static CCLI_DEFINE_COMPLETION(completion_open_file, "file", open_completion_file);
+static CCLI_DEFINE_COMPLETION(completion_open_dir, "dir", open_completion_dir);
+static CCLI_DEFINE_COMPLETION(completion_open, "open", NULL,
+	&completion_open_file, &completion_open_dir);
 
 const int dump_completion(struct ccli *ccli, const char *command,
 			  const char *line, int word, char *match,
@@ -499,11 +436,7 @@ const int dump_completion(struct ccli *ccli, const char *command,
 	return ret;
 }
 
-const static struct ccli_completion_table completion_dump = {
-	.name = "dump",
-	.completion = dump_completion,
-	.options = { NULL }
-};
+static CCLI_DEFINE_COMPLETION(completion_dump, "dump", dump_completion);
 
 const int list_completion(struct ccli *ccli, const char *command,
 			  const char *line, int word, char *match,
@@ -519,16 +452,10 @@ const int list_completion(struct ccli *ccli, const char *command,
 	return ret;
 }
 
-const static struct ccli_completion_table completion_list = {
-	.name = "list",
-	.completion = list_completion,
-	.options = { NULL }
-};
-
-const static struct ccli_completion_table completion_main = {
-	.options = { &completion_open, &completion_close,
-		     &completion_list, &completion_dump, NULL }
-};
+static CCLI_DEFINE_COMPLETION(completion_list, "list", list_completion);
+static CCLI_DEFINE_COMPLETION(completion_main, NULL, NULL,
+		       &completion_open, &completion_close,
+		       &completion_list, &completion_dump);
 
 int main (int argc, char **argv)
 {
