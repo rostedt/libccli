@@ -625,10 +625,11 @@ __hidden bool check_for_ctrl_c(struct ccli *ccli)
 }
 
 /**
- * ccli_page - Write to the output descriptor of ccli and prompt at window size
+ * ccli_vpage - Write to the output descriptor of ccli and prompt at window size
  * @ccli: The CLI descriptor to write to.
  * @line: The current line count
  * @fmt: A printf() like format to write.
+ * @ap: The va_list read from
  *
  * Just like ccli_printf() which rites to the output descriptor of @ccli
  * the content passed in, but this will also stop to ask the user to
@@ -643,12 +644,10 @@ __hidden bool check_for_ctrl_c(struct ccli *ccli)
  * Return -1 on error (with ERRNO set) or if the user asks to quit.
  *         1 for another screen full.
  *         0 to not stop.
-
  */
-int ccli_page(struct ccli *ccli, int line, const char *fmt, ...)
+int ccli_vpage(struct ccli *ccli, int line, const char *fmt, va_list ap)
 {
 	struct winsize w;
-	va_list ap;
 	char ans;
 	int len;
 	int ret;
@@ -689,11 +688,41 @@ int ccli_page(struct ccli *ccli, int line, const char *fmt, ...)
 		}
 	}
 
-	va_start(ap, fmt);
 	len = ccli_vprintf(ccli, fmt, ap);
-	va_end(ap);
 
 	return len >= 0 ? line > 0 ? line + 1 : line : len;
+}
+
+/**
+ * ccli_page - Write to the output descriptor of ccli and prompt at window size
+ * @ccli: The CLI descriptor to write to.
+ * @line: The current line count
+ * @fmt: A printf() like format to write.
+ *
+ * Just like ccli_printf() which rites to the output descriptor of @ccli
+ * the content passed in, but this will also stop to ask the user to
+ * read more, quit or continue when the amount reaches the size of
+ * the window.
+ *
+ * When @line matches the window size, the prompt will be displayed.
+ * Note, the window size is only calculated when @line is zero.
+ *
+ * If @line is less than zero, no prompt will be displayed.
+ *
+ * Return -1 on error (with ERRNO set) or if the user asks to quit.
+ *         1 for another screen full.
+ *         0 to not stop.
+
+ */
+int ccli_page(struct ccli *ccli, int line, const char *fmt, ...)
+{
+	va_list ap;
+	int len;
+
+	va_start(ap, fmt);
+	len = ccli_vpage(ccli, line, fmt, ap);
+	va_end(ap);
+	return len;
 }
 
 /**

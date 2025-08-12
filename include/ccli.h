@@ -100,6 +100,7 @@ int ccli_perror(struct ccli *ccli, const char *fmt, ...);
 
 __attribute__((__format__(printf, 3, 4)))
 int ccli_page(struct ccli *ccli, int line, const char *fmt, ...);
+int ccli_vpage(struct ccli *ccli, int line, const char *fmt, va_list ap);
 
 int ccli_loop(struct ccli *ccli);
 int ccli_register_command(struct ccli *ccli, const char *command_name,
