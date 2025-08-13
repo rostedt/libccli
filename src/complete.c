@@ -112,6 +112,7 @@ static void print_completion(struct ccli *ccli, const char *match,
 	if (!max_len)
 		return;
 
+	nr_str = x;
 	max_len -= index;
 
 	spaces = malloc(max_len);
