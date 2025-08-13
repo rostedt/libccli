@@ -128,6 +128,8 @@ extern void echo_prompt(struct ccli *ccli);
 
 extern struct command *find_command(struct ccli *ccli, const char *cmd);
 extern struct alias *find_alias(struct ccli *ccli, const char *alias);
+extern bool add_aliases(struct ccli *ccli, int argc, char **argv, int word,
+		        char ***list, int *cnt, const char *match, int mlen);
 
 extern bool check_for_ctrl_c(struct ccli *ccli);
 extern char page_stop(struct ccli *ccli);

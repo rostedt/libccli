@@ -582,6 +582,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	char *match = NULL;
 	char delim = '\0';
 	int matched = 0;
+	bool found_alias = false;
 	int index;
 	int word;
 	int argc;
@@ -647,11 +648,14 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 
 	reset_match(&delim, mlen, match, save_match);
 
+	/* Add aliases */
+	found_alias = add_aliases(ccli, argc, argv, word, &list, &cnt, match, mlen);
+
 	/*
 	 * Next do the default completion operation
 	 * if command completion was not done
 	 */
-	if ((!cmd || !cmd->completion) && ccli->default_completion)
+	if (!found_alias && (!cmd || !cmd->completion) && ccli->default_completion)
 		cnt = ccli->default_completion(ccli, NULL, copy.line, word,
 					       match, &list,
 					       ccli->default_completion_data);

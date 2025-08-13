@@ -418,6 +418,33 @@ __hidden int exec_unalias(struct ccli *ccli, const char *command,
 	return 0;
 }
 
+__hidden bool add_aliases(struct ccli *ccli, int argc, char **argv, int word,
+			 char ***list, int *cnt, const char *match, int mlen)
+{
+	bool ret = false;
+	int i;
+
+	if (word) {
+		if (strcmp(argv[0], "alias") == 0)
+			return true;
+
+		if (strcmp(argv[0], "unalias") != 0)
+			return false;
+
+		if (word > 1)
+			return true;
+		ret = true;
+	}
+
+	for (i = 0; i < ccli->nr_aliases; i++) {
+		const char *alias = ccli->aliases[i].alias;
+
+		if (!mlen || strncmp(match, alias, mlen) == 0)
+			ccli_list_add(ccli, list, cnt, alias);
+	}
+	return ret;
+}
+
 __hidden int execute_alias(struct ccli *ccli, struct alias *alias,
 			   const char *line, int argc, char **argv)
 {
