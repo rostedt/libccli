@@ -16,11 +16,21 @@ OBJS += alias.o
 OBJS := $(OBJS:%.o=$(bdir)/%.o)
 DEPS := $(OBJS:$(bdir)/%.o=$(bdir)/.%.d)
 
-$(LIBCCLI_STATIC): $(OBJS)
+$(LIBCCLI_STATIC): $(bdir)/libccli.o
 	$(Q)$(call do_build_static_lib)
 
 $(LIBCCLI_SHARED): $(OBJS)
 	$(Q)$(call do_compile_shared_library,$(notdir $(LIBCCLI_SHARED_VERSION)))
+
+$(bdir)/libccli-global.o: $(OBJS)
+	$(Q)ld -r -o $@ $^
+
+find_local = \
+	 $(shell for f in a `nm $^ | grep ' T ' | cut -d' ' -f3`;  do \
+	  if [ "$${f#ccli_}" = "$$f" ]; then echo --localize-symbol $$f; fi; done)
+
+$(bdir)/libccli.o: $(bdir)/libccli-global.o
+	$(Q)objcopy $(call find_local) $< $@
 
 $(LIBCCLI_SHARED_VERSION): $(LIBCCLI_SHARED)
 	@ln -sf $(<F) $@
