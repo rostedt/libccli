@@ -828,7 +828,7 @@ static int get_line(struct ccli *ccli, struct line_buf *line, bool command)
 		case '\t':
 			if (!command) {
 				line_insert(line, ch);
-				line_refresh(ccli, line, 0);
+				line_update(ccli, line);
 				break;
 			}
 			do_completion(ccli, line, tab++);
@@ -849,19 +849,19 @@ static int get_line(struct ccli *ccli, struct line_buf *line, bool command)
 			break;
 		case CHAR_BACKSPACE:
 			line_backspace(line);
-			line_refresh(ccli, line, 0);
+			line_update(ccli, line);
 			break;
 		case CHAR_DEL:
 			line_del(line);
-			line_refresh(ccli, line, 0);
+			line_update(ccli, line);
 			break;
 		case CHAR_DELWORD:
-			pad = line_del_word(line);
-			line_refresh(ccli, line, pad);
+			line_del_word(line);
+			line_update(ccli, line);
 			break;
 		case CHAR_DEL_BEGINNING:
-			pad = line_del_beginning(line);
-			line_refresh(ccli, line, pad);
+			line_del_beginning(line);
+			line_update(ccli, line);
 			break;
 		case CHAR_UP:
 			if (!command)
@@ -877,19 +877,19 @@ static int get_line(struct ccli *ccli, struct line_buf *line, bool command)
 			break;
 		case CHAR_LEFT:
 			line_left(line);
-			line_refresh(ccli, line, 0);
+			line_update(ccli, line);
 			break;
 		case CHAR_RIGHT:
 			line_right(line);
-			line_refresh(ccli, line, 0);
+			line_update(ccli, line);
 			break;
 		case CHAR_HOME:
 			line_home(line);
-			line_refresh(ccli, line, 0);
+			line_update(ccli, line);
 			break;
 		case CHAR_END:
 			line_end(line);
-			line_refresh(ccli, line, 0);
+			line_update(ccli, line);
 			break;
 		case CHAR_PAGEUP:
 			if (!command)
@@ -905,20 +905,23 @@ static int get_line(struct ccli *ccli, struct line_buf *line, bool command)
 			break;
 		case CHAR_LEFT_WORD:
 			line_left_word(line);
-			line_refresh(ccli, line, 0);
+			line_update(ccli, line);
 			break;
 		case CHAR_RIGHT_WORD:
 			line_right_word(line);
-			line_refresh(ccli, line, 0);
+			line_update(ccli, line);
 			break;
 		case CHAR_INSERT:
 			/* Todo */
 			break;
 		default:
-			if (ch == CHAR_NEWLINE || isprint(ch)) {
+			if (ch == CHAR_NEWLINE) {
 				line_insert(line, ch);
 				line_refresh(ccli, line, 0);
 				break;
+			} else if (isprint(ch)) {
+				line_insert(line, ch);
+				line_update(ccli, line);
 			}
 			dprint("unknown char '%d'\n", ch);
 		}
@@ -949,8 +952,6 @@ char *ccli_getline(struct ccli *ccli, const char *def)
 		return NULL;
 
 	if (def) {
-		ccli_printf(ccli, "%s", def);
-
 		for (int i = 0; i < def[i]; i++) {
 			ret = line_insert(&line, def[i]);
 			if (ret) {
@@ -960,6 +961,7 @@ char *ccli_getline(struct ccli *ccli, const char *def)
 		}
 	}
 
+	line_update(ccli, &line);
 	ret = get_line(ccli, &line, false);
 	if (!ret)
 		str = line_string(&line);

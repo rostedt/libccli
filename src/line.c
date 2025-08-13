@@ -75,13 +75,23 @@ __hidden void line_reset(struct line_buf *line)
 	memset(line->line, 0, line->size);
 	line->len = 0;
 	line->pos = 0;
+	line->pad = 0;
 	line->start = 0;
+	line->update = 0;
+	line->written = 0;
 }
 
 __hidden void line_cleanup(struct line_buf *line)
 {
 	free(line->line);
 	memset(line, 0, sizeof(*line));
+}
+
+static void update_update(struct line_buf *line, int pad)
+{
+	if (line->update > line->pos)
+		line->update = line->pos;
+	line->pad += pad;
 }
 
 __hidden int line_insert(struct line_buf *line, char ch)
@@ -105,6 +115,7 @@ __hidden int line_insert(struct line_buf *line, char ch)
 		line->pos = line->len;
 		line->line[line->len] = '\0';
 		line->start = line->len;
+		update_update(line, 0);
 		return 0;
 	}
 	if (line->len == line->size) {
@@ -118,6 +129,7 @@ __hidden int line_insert(struct line_buf *line, char ch)
 	if (line->pos < line->len) {
 		len = line->len - line->pos;
 		memmove(line->line + line->pos + 1, line->line + line->pos, len);
+		update_update(line, -1);
 	}
 
 	line->line[line->pos++] = ch;
@@ -171,6 +183,7 @@ __hidden void line_backspace(struct line_buf *line)
 	line->len--;
 	memmove(line->line + line->pos, line->line + line->pos + 1, len);
 	line->line[line->len] = '\0';
+	update_update(line, 1);
 }
 
 __hidden void line_right_word(struct line_buf *line)
@@ -201,7 +214,9 @@ static int del_words(struct line_buf *line, int old_pos)
 	len = line->len - old_pos;
 	line->len -= old_pos - line->pos;
 	memmove(line->line + line->pos, line->line + old_pos, len);
-	memset(line->line + line->len, 0, old_pos - line->pos);
+	len = old_pos - line->pos;
+	memset(line->line + line->len, 0, len);
+	update_update(line, len);
 
 	return old_pos - line->pos;
 }
@@ -239,6 +254,7 @@ __hidden void line_del(struct line_buf *line)
 	line->len--;
 	memmove(line->line + line->pos, line->line + line->pos + 1, len);
 	line->line[line->len] = '\0';
+	update_update(line, 1);
 }
 
 __hidden int line_copy(struct line_buf *dst, struct line_buf *src, int len)
@@ -253,6 +269,7 @@ __hidden int line_copy(struct line_buf *dst, struct line_buf *src, int len)
 	strncpy(dst->line, src->line, len);
 	dst->pos = len;
 	dst->len = len;
+	dst->update = 0;
 
 	return 0;
 }
@@ -488,28 +505,45 @@ __hidden int line_parse(const char *line, char ***pargv,
 __hidden void line_replace(struct line_buf *line, char *str)
 {
 	int len = strlen(str);
+	int i;
 
 	if (len >= line->size)
 		len = line->size - 1;
 
-	strncpy(line->line, str, len);
+	for (i = 0; str[i] && line->line[i] == str[i]; i++)
+		;
+	line->update = i;
+
+	strncpy(line->line + i, str + i, len - i);
 	if (len < line->len)
 		memset(line->line + len, 0, line->len - len);
 	line->len = len;
 	line->pos = len;
 }
 
-__hidden void line_refresh(struct ccli *ccli, struct line_buf *line, int pad)
+static void go_back(struct ccli *ccli, int cnt)
+{
+	char back[cnt + 1];
+
+	memset(back, '\b', cnt);
+	back[cnt] = '\0';
+
+	echo_str(ccli, back);
+}
+
+static void add_pad(struct ccli *ccli, int pad)
 {
 	char padding[pad + 3];
-	int len;
-
-	/* Just append two spaces */
-	pad += 2;
 
 	memset(padding, ' ', pad);
 	padding[pad] = '\0';
+	echo_str(ccli, padding);
 
+	go_back(ccli, pad);
+}
+
+__hidden void line_refresh(struct ccli *ccli, struct line_buf *line, int pad)
+{
 	echo(ccli, '\r');
 
 	if (line->start)
@@ -519,10 +553,39 @@ __hidden void line_refresh(struct ccli *ccli, struct line_buf *line, int pad)
 	else
 		echo_prompt(ccli);
 	echo_str(ccli, line->line + line->start);
-	echo_str(ccli, padding);
-	while (pad--)
-		echo(ccli, '\b');
 
-	for (len = line->len; len > line->pos; len--)
-		echo(ccli, '\b');
+	/* Add two spaces just in case */
+	add_pad(ccli, pad + 2);
+
+	if (line->len > line->pos)
+		go_back(ccli, line->len - line->pos);
+
+	line->update = line->len;
+	line->written = line->pos;
+	line->pad = 0;
+}
+
+__hidden void line_update(struct ccli *ccli, struct line_buf *line)
+{
+	int start = line->update;
+	int pos = line->written;
+
+	if (pos < start)
+		start = pos;
+
+	if (pos > start)
+		go_back(ccli, pos - start);
+
+	line->line[line->len] = 0;
+	echo_str(ccli, line->line + start);
+
+	if (line->pad > 0)
+		add_pad(ccli, line->pad);
+
+	if (line->len > line->pos)
+		go_back(ccli, line->len - line->pos);
+
+	line->written = line->pos;
+	line->update = line->len;
+	line->pad = 0;
 }

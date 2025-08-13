@@ -21,6 +21,9 @@ struct line_buf {
 	int size;
 	int len;
 	int pos;
+	int pad;
+	int update;	/* What position to update from */
+	int written;	/* Position of what was written to screen */
 	int start_pos;	/* used for skipping first part of line */
 	int start;	/* used for \ newline */
 };
@@ -138,6 +141,7 @@ extern bool check_for_ctrl_c(struct ccli *ccli);
 extern char page_stop(struct ccli *ccli);
 
 extern void line_refresh(struct ccli *ccli, struct line_buf *line, int pad);
+extern void line_update(struct ccli *ccli, struct line_buf *line);
 
 extern int line_init(struct line_buf *line);
 extern int line_init_str(struct line_buf *line, const char *str);

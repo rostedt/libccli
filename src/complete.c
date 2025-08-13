@@ -709,7 +709,7 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	free(match);
 	ccli->display_index = 0;
 	line_cleanup(&copy);
-	line_refresh(ccli, ccli->line, 0);
+	line_update(ccli, ccli->line);
 }
 
 static void test_table(const void *data)
