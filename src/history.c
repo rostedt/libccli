@@ -223,6 +223,7 @@ __hidden int history_search(struct ccli *ccli, struct line_buf *line, int *pad)
 			goto out;
 		case CHAR_IGNORE_START_H ... CHAR_IGNORE_END:
 		case '\n':
+		case '\t':
 			goto out;
 		case CHAR_BACKSPACE:
 			if (!search.len)
