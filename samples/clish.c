@@ -149,6 +149,8 @@ static void sig_handle(int sig)
 	/* do nothing */
 }
 
+CCLI_DEFINE_COMPLETION(command_lls, "lls", do_lls, lls_completion);
+
 int main (int argc, char **argv)
 {
 	struct sigaction act = { .sa_handler = sig_handle };
@@ -167,8 +169,7 @@ int main (int argc, char **argv)
 
 	ccli_register_command_delimiter(ccli, ";");
 
-	ccli_register_command(ccli, "lls", do_lls, NULL);
-	ccli_register_completion(ccli, "lls", lls_completion);
+	ccli_register_command_table(ccli, &command_lls, NULL);
 
 	ccli_register_unknown(ccli, do_unknown, NULL);
 	ccli_register_default_completion(ccli, command_completion, NULL);
