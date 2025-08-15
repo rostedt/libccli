@@ -132,8 +132,6 @@ include scripts/utils.mk
 
 INCLUDES = -I$(src)/include
 
-include $(src)/scripts/features.mk
-
 # Set compile option CFLAGS if not set elsewhere
 CFLAGS ?= -g -Wall
 CPPFLAGS ?=
