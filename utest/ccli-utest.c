@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: LGPL-2.1
+// SPDX-License-Identifier: MIT
 /*
  * Copyright (C) 2022 Steven Rostedt <rostedt@goodmis.org>
  * Based off of trace-utest.c that is

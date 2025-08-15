@@ -299,15 +299,6 @@ REPORTING BUGS
 --------------
 Report bugs to  <rostedt@goodmis.org>
 
-LICENSE
--------
-libccli is Free Software licensed under the GNU LGPL 2.1
-
 RESOURCES
 ---------
 https://github.com/rostedt/libccli
-
-COPYING
--------
-Copyright \(C) 2022 Steven Rostedt. Free use of this software is granted under
-the terms of the GNU Public License (GPL).

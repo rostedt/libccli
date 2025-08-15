@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: LGPL-2.1
+# SPDX-License-Identifier: MIT
 # libccli version:
 CCLI_VERSION = 1
 CCLI_PATCHLEVEL = 2

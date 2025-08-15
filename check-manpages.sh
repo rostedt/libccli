@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-License-Identifier: LGPL-2.1
+# SPDX-License-Identifier: MIT
 # Copyright (C) 2022, Google Inc, Steven Rostedt <rostedt@goodmis.org>
 #
 # This checks if any function is listed in a man page that is not listed

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: LGPL-2.1 */
+/* SPDX-License-Identifier: MIT */
 #ifndef __CCLI_UTEST_H
 #define __CCLI_UTEST_H
 

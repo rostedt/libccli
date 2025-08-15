@@ -153,15 +153,6 @@ REPORTING BUGS
 --------------
 Report bugs to  <rostedt@goodmis.org>
 
-LICENSE
--------
-libccli is Free Software licensed under the GNU LGPL 2.1
-
 RESOURCES
 ---------
 https://git.kernel.org/pub/scm/libs/libtrace/libtracefs.git/
-
-COPYING
--------
-Copyright \(C) 2022 Steven Rostedt. Free use of this software is granted under
-the terms of the GNU Public License (GPL).
