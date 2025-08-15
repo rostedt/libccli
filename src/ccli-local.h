@@ -130,6 +130,7 @@ extern int history_add(struct ccli *ccli, const char *line);
 extern int history_up(struct ccli *ccli, struct line_buf *line, int cnt);
 extern int history_down(struct ccli *ccli, struct line_buf *line, int cnt);
 extern int history_search(struct ccli *ccli, struct line_buf *line, int *pad);
+extern void history_free(struct ccli *ccli);
 
 extern void free_argv(int argc, char **argv);
 

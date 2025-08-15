@@ -21,6 +21,20 @@ static inline int history_idx(struct ccli *ccli, int idx)
 	return idx % ccli->history_max;
 }
 
+__hidden void history_free(struct ccli *ccli)
+{
+	int max = ccli->history_size;
+
+	if (ccli->history_size > ccli->history_max)
+		max = ccli->history_max;
+
+	for (int i = 0; i < max; i++)
+		free(ccli->history[i]);
+
+	free(ccli->history);
+	ccli->history = NULL;
+}
+
 __hidden int history_add(struct ccli *ccli, const char *line)
 {
 	char **lines;
