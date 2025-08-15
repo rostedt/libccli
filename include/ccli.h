@@ -34,6 +34,7 @@ struct ccli_option_table;
  * struct ccli_command_table - table for commands
  * @name: The name of the command
  * @command: a required callback to execute the command
+ * @completion: option function pointer to a completion function
  * @data: Optional data to use for the callback command
  * @options: Reserved for later use
  * @subcommands: The table for the sub commands (must exist and end with NULL)
@@ -44,6 +45,7 @@ struct ccli_option_table;
 struct ccli_command_table {
 	const char				*name;
 	ccli_command_callback			command;
+	ccli_completion				completion;
 	void					*data;
 	const struct ccli_option_table		*options;
 	const struct ccli_command_table		*subcommands[];
@@ -56,29 +58,12 @@ struct ccli_command_table {
 		.subcommands = {  __VA_ARGS__ __VA_OPT__(,)  NULL }	\
 	}
 
-/**
- * struct ccli_completion_table - table for completions
- * @name: The name of the word to match (ignored for the root of the table)
- * @completion: option function pointer to a completion function
- * @data: The data to pass to the completion command.
- * @options: The table for the sub commands (must exist and end with NULL)
- *
- * The root table is just a holder for the actual commands and the name is
- * ignored. The @completion function is called if the name matches the previous
- * word, and then the options are traversed.
- */
-struct ccli_completion_table {
-	const char				*name;
-	ccli_completion				completion;
-	void					*data;
-	const struct ccli_completion_table	*options[];
-};
-
-#define CCLI_DEFINE_COMPLETION(table, _name, _completion, ...)	\
-	const struct ccli_completion_table table = {			\
+#define CCLI_DEFINE_COMPLETION(table, _name, _command, _completion, ...) \
+	const struct ccli_command_table table = {			\
 		.name = _name,						\
+		.command = _command,					\
 		.completion = _completion,				\
-		.options = { __VA_ARGS__ __VA_OPT__(,) NULL }	\
+		.subcommands = {  __VA_ARGS__ __VA_OPT__(,)  NULL }	\
 	}
 
 struct ccli *ccli_alloc(const char *prompt, int in, int out);
@@ -114,10 +99,6 @@ int ccli_register_command_delimiter(struct ccli *ccli, const char *delim);
 
 int ccli_register_completion(struct ccli *ccli, const char *command_name,
 			     ccli_completion completion);
-
-int ccli_register_completion_table(struct ccli *ccli,
-				   const struct ccli_completion_table *table,
-				   void *data);
 
 int ccli_register_default_completion(struct ccli *ccli, ccli_completion completion,
 				     void *data);

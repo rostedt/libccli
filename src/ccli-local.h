@@ -107,8 +107,6 @@ struct ccli {
 	struct alias		*aliases;
 	const struct ccli_command_table *command_table;
 	void			*command_table_data;
-	const struct ccli_completion_table *completion_table;
-	void			*completion_table_data;
 	ccli_completion		default_completion;
 	void			*default_completion_data;
 	ccli_interrupt		interrupt;

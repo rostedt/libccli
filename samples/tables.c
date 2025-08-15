@@ -312,19 +312,6 @@ static int close_dir_command(struct ccli *ccli, const char *command,
 	return 0;
 }
 
-static CCLI_DEFINE_COMMAND(command_dump, "dump", dump_command);
-static CCLI_DEFINE_COMMAND(command_list, "list", list_command);
-static CCLI_DEFINE_COMMAND(command_open_file, "file", open_file_command);
-static CCLI_DEFINE_COMMAND(command_open_dir, "dir", open_dir_command);
-static CCLI_DEFINE_COMMAND(command_close_file, "file", close_file_command);
-static CCLI_DEFINE_COMMAND(command_close_dir, "dir", close_dir_command);
-static CCLI_DEFINE_COMMAND(command_open, "open", NULL,
-		    &command_open_file, &command_open_dir);
-static CCLI_DEFINE_COMMAND(command_close, "close", NULL,
-		    &command_close_file, &command_close_dir);
-static CCLI_DEFINE_COMMAND(command_main, NULL, NULL,
-		    &command_open, &command_close, &command_dump, &command_list);
-
 static int list_items(struct ccli *ccli, char ***list, char **prev, int nr_prev, struct io_item *items)
 {
 	struct io_item *item;
@@ -387,18 +374,6 @@ static int close_completion_dir(struct ccli *ccli, const char *command,
 	return 0;
 }
 
-static int close_completion(struct ccli *ccli, const char *command,
-			    const char *line, int word, char *match,
-			    char ***list, void *data)
-{
-	return 0;
-}
-
-static CCLI_DEFINE_COMPLETION(completion_close_file, "file", close_completion_file);
-static CCLI_DEFINE_COMPLETION(completion_close_dir, "dir", close_completion_dir);
-static CCLI_DEFINE_COMPLETION(completion_close, "close", close_completion,
-	&completion_close_file, &completion_close_dir);
-
 const int open_completion_file(struct ccli *ccli, const char *command,
 			 const char *line, int word, char *match,
 			 char ***list, void *data)
@@ -417,11 +392,6 @@ const int open_completion_dir(struct ccli *ccli, const char *command,
 	return ccli_file_completion(ccli, list, &cnt, match, S_IFDIR, NULL, ".");
 }
 
-static CCLI_DEFINE_COMPLETION(completion_open_file, "file", open_completion_file);
-static CCLI_DEFINE_COMPLETION(completion_open_dir, "dir", open_completion_dir);
-static CCLI_DEFINE_COMPLETION(completion_open, "open", NULL,
-	&completion_open_file, &completion_open_dir);
-
 const int dump_completion(struct ccli *ccli, const char *command,
 			  const char *line, int word, char *match,
 			  char ***list, void *data)
@@ -435,8 +405,6 @@ const int dump_completion(struct ccli *ccli, const char *command,
 	ccli_argv_free(argv);
 	return ret;
 }
-
-static CCLI_DEFINE_COMPLETION(completion_dump, "dump", dump_completion);
 
 const int list_completion(struct ccli *ccli, const char *command,
 			  const char *line, int word, char *match,
@@ -452,10 +420,25 @@ const int list_completion(struct ccli *ccli, const char *command,
 	return ret;
 }
 
-static CCLI_DEFINE_COMPLETION(completion_list, "list", list_completion);
-static CCLI_DEFINE_COMPLETION(completion_main, NULL, NULL,
-		       &completion_open, &completion_close,
-		       &completion_list, &completion_dump);
+static CCLI_DEFINE_COMPLETION(command_dump, "dump", dump_command, dump_completion);
+static CCLI_DEFINE_COMPLETION(command_list, "list", list_command, list_completion);
+
+static CCLI_DEFINE_COMPLETION(command_open_file, "file", open_file_command,
+			      open_completion_file);
+static CCLI_DEFINE_COMPLETION(command_open_dir, "dir", open_dir_command,
+			      open_completion_dir);
+
+static CCLI_DEFINE_COMPLETION(command_close_file, "file", close_file_command,
+			      close_completion_file);
+static CCLI_DEFINE_COMPLETION(command_close_dir, "dir", close_dir_command,
+			      close_completion_dir);
+
+static CCLI_DEFINE_COMMAND(command_open, "open", NULL,
+			   &command_open_file, &command_open_dir);
+static CCLI_DEFINE_COMMAND(command_close, "close", NULL,
+		    &command_close_file, &command_close_dir);
+static CCLI_DEFINE_COMMAND(command_main, NULL, NULL,
+		    &command_open, &command_close, &command_dump, &command_list);
 
 int main (int argc, char **argv)
 {
@@ -468,7 +451,6 @@ int main (int argc, char **argv)
 		pdie("Creating command line interface");
 
 	ccli_register_command_table(ccli, &command_main, NULL);
-	ccli_register_completion_table(ccli, &completion_main, NULL);
 
 	ccli_loop(ccli);
 

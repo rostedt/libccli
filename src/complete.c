@@ -502,7 +502,7 @@ static void do_completion_table(struct ccli *ccli, int argc, char **argv, int wo
 				char ***clist, int *cnt, struct line_buf *line,
 				char *match)
 {
-	const struct ccli_completion_table *table = ccli->completion_table;
+	const struct ccli_command_table *table = ccli->command_table;
 	char **list = NULL;
 	struct line_buf copy;
 	void *data;
@@ -514,14 +514,14 @@ static void do_completion_table(struct ccli *ccli, int argc, char **argv, int wo
 
 	/* Iterate down finding the node that matches this word */
 	for (i = 0; i < word; i++) {
-		for (c = 0; table->options[c]; c++) {
-			const char *name = table->options[c]->name;
+		for (c = 0; table->subcommands[c]; c++) {
+			const char *name = table->subcommands[c]->name;
 			if (strcmp(argv[i], name) == 0)
 				break;
 		}
-		if (!table->options[c])
+		if (!table->subcommands[c])
 			break;
-		table = table->options[c];
+		table = table->subcommands[c];
 	}
 
 	/* Always call the completion callback for a matched node */
@@ -529,7 +529,7 @@ static void do_completion_table(struct ccli *ccli, int argc, char **argv, int wo
 		char *command;
 
 		/* What was registered is the default data */
-		data = ccli->completion_table_data;
+		data = ccli->command_table_data;
 		/* But the table can override it */
 		if (table->data)
 			data = table->data;
@@ -546,8 +546,8 @@ static void do_completion_table(struct ccli *ccli, int argc, char **argv, int wo
 
 	/* Add the options only if we are at the next word to find */
 	if (i == word) {
-		for (c = 0; table->options[c]; c++)
-			ccli_list_add(ccli, &list, &ret, table->options[c]->name);
+		for (c = 0; table->subcommands[c]; c++)
+			ccli_list_add(ccli, &list, &ret, table->subcommands[c]->name);
 	}
 
 	if (ret <= 0)
@@ -710,73 +710,4 @@ __hidden void do_completion(struct ccli *ccli, struct line_buf *line, int tab)
 	ccli->display_index = 0;
 	line_cleanup(&copy);
 	line_update(ccli, ccli->line);
-}
-
-static void test_table(const void *data)
-{
-	const struct ccli_completion_table *table = data;
-	const char *name = table->name;
-	int len = strlen(test_name);
-	int l = 0;
-	int i;
-
-	/* The root of the completion table does not need a name */
-	if (!name)
-		name = "root";
-
-	if (len)
-		strncat(test_name, "->", BUFSIZ - 1);
-	strncat(test_name, name, BUFSIZ - 1);
-
-	snprintf(test_message, BUFSIZ - 1,
-		 "Completion table missing name or 'options' NULL terminator");
-
-	/* Touch all the names first */
-	for (i = 0; table->options[i]; i++)
-		l += strlen(table->options[i]->name);
-
-	/* Now recurse */
-	for (i = 0; table->options[i]; i++)
-		test_table(table->options[i]);
-
-	test_name[len] = '\0';
-}
-
-/**
- * ccli_register_completion_table - register a completion table
- * @ccli: The CLI descriptor to regsiter a completion table to
- * @table: The completion table to assign.
- * @data: The default data to use for completions (if their table doesn't have it)
- *
- * The @table is the root to hold other completions, and its name is ignored.
- * Each entry in the table must have its options array end with NULL. Even
- * if it is a leaf node and has no more children.
- *
- * The completion field of an entry will be called if its name matched on
- * the previous word.
- */
-int ccli_register_completion_table(struct ccli *ccli,
-				   const struct ccli_completion_table *table,
-				   void *data)
-{
-	bool crashed;
-
-	/*
-	 * Need to walk the completion table to make sure that
-	 * every element has populated the "options" field with a
-	 * NULL terminated array. Check here to remove unwanted surprises
-	 * later. If it crashes, it will report the problem, and not
-	 * register the table.
-	 */
-	crashed = test_for_crash(test_table, table);
-
-	if (crashed) {
-		errno = EFAULT;
-		return -1;
-	}
-
-	ccli->completion_table = table;
-	ccli->completion_table_data = data;
-
-	return 0;
 }
