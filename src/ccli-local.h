@@ -15,6 +15,7 @@
 #define __hidden __attribute__((visibility ("hidden")))
 
 #define ISSPACE(c) isspace((unsigned char)(c))
+#define OPTIMIZER_HIDE_VAR(X) __asm__ volatile ("": "+r" (X))
 
 struct line_buf {
 	char *line;

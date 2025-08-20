@@ -329,6 +329,7 @@ static void test_table(const void *data)
 		test_table(table->subcommands[i]);
 
 	test_name[len] = '\0';
+	OPTIMIZER_HIDE_VAR(l);
 }
 
 static const struct ccli_command_table *
