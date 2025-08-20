@@ -181,7 +181,6 @@ __hidden int cache_save_fd(struct ccli *ccli, const char *start_tag,
 	char *str;
 	char buf[64];
 	int ret;
-	int idx;
 	int i;
 
 	if (!ccli || !tag || !start_tag || !callback || fd < 0) {
@@ -211,7 +210,7 @@ __hidden int cache_save_fd(struct ccli *ccli, const char *start_tag,
 	if (ret < strlen(buf))
 		return -1;
 
-	for (i = 0; i < cnt; i++, idx++) {
+	for (i = 0; i < cnt; i++) {
 		if (callback(ccli, fd, i, cnt, data) < 0)
 			break;
 	}
